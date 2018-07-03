@@ -1,3 +1,7 @@
+this is my fork of usbcnc for STM32F103 specially for board in my chinnese machine BL-USBMach V2.0
+
+https://github.com/mirecta/grbl/blob/edge/doc/media/bl-usbmach.jpg?raw=true
+
 ![GitHub Logo](https://github.com/gnea/gnea-Media/blob/master/Grbl%20Logo/Grbl%20Logo%20250px.png?raw=true)
 
 ***
