@@ -31,10 +31,23 @@
 #define SOME_LARGE_VALUE FLT_MAX
 
 // Axis array index values. Must start with 0 and be continuous.
-#define N_AXIS 3 // Number of axes
+
 #define X_AXIS 0 // Axis indexing value.
 #define Y_AXIS 1
 #define Z_AXIS 2
+#ifdef STM32F103C8
+  #define N_AXIS 5           // Number of axes
+  #define N_AXIS_LINEAR 3    // Number of linears axis
+#else
+  #define N_AXIS 3 // Number of axes
+#endif
+
+#if N_AXIS > 3
+  #define A_AXIS 3
+#endif
+#if N_AXIS > 4
+  #define B_AXIS 4
+#endif
 // #define A_AXIS 3
 
 // CoreXY motor assignments. DO NOT ALTER.

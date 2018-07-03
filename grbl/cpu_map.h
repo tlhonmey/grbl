@@ -162,46 +162,46 @@
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
 #define STEP_DDR        DDRD
 #define STEP_PORT       PORTD
-#define X_STEP_BIT      2  
-#define Y_STEP_BIT      3  
-#define Z_STEP_BIT      4  
+#define X_STEP_BIT      2
+#define Y_STEP_BIT      3
+#define Z_STEP_BIT      4
 #define STEP_MASK       ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
 
   // Define step direction output pins. NOTE: All direction pins must be on the same port.
 #define DIRECTION_DDR     DDRD
 #define DIRECTION_PORT    PORTD
-#define X_DIRECTION_BIT   5  
-#define Y_DIRECTION_BIT   6  
-#define Z_DIRECTION_BIT   7  
+#define X_DIRECTION_BIT   5
+#define Y_DIRECTION_BIT   6
+#define Z_DIRECTION_BIT   7
 #define DIRECTION_MASK    ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 
   // Define stepper driver enable/disable output pin.
-#define SetStepperDisableBit() 
-#define ResetStepperDisableBit() 
+#define SetStepperDisableBit()
+#define ResetStepperDisableBit()
 
 
-  // Define homing/hard limit switch input pins and limit interrupt vectors. 
+  // Define homing/hard limit switch input pins and limit interrupt vectors.
   // NOTE: All limit bit pins must be on the same port, but not on a port with other input pins (CONTROL).
 #define LIMIT_DDR        DDRB
 #define LIMIT_PIN        PINB
 #define LIMIT_PORT       PORTB
-#define X_LIMIT_BIT      1  
-#define Y_LIMIT_BIT      2  
-#ifdef VARIABLE_SPINDLE // Z Limit pin and spindle enabled swapped to access hardware PWM on Pin 11.  
-#define Z_LIMIT_BIT	   4 
+#define X_LIMIT_BIT      1
+#define Y_LIMIT_BIT      2
+#ifdef VARIABLE_SPINDLE // Z Limit pin and spindle enabled swapped to access hardware PWM on Pin 11.
+#define Z_LIMIT_BIT	   4
 #else
-#define Z_LIMIT_BIT    3  
+#define Z_LIMIT_BIT    3
 #endif
 #define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 #define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
-#define LIMIT_INT_vect   PCINT0_vect 
+#define LIMIT_INT_vect   PCINT0_vect
 #define LIMIT_PCMSK      PCMSK0 // Pin change interrupt register
 
   // Define spindle enable and spindle direction output pins.
 #define SPINDLE_ENABLE_DDR    DDRB
 #define SPINDLE_ENABLE_PORT   PORTB
   // Z Limit pin and spindle PWM/enable pin swapped to access hardware PWM on Pin 11.
-#ifdef VARIABLE_SPINDLE 
+#ifdef VARIABLE_SPINDLE
 #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
   // If enabled, spindle direction pin now used as spindle enable, while PWM remains on D11.
 #define SPINDLE_ENABLE_BIT    5  // Uno Digital Pin 13 (NOTE: D13 can't be pulled-high input due to LED.)
@@ -227,7 +227,7 @@
 #define COOLANT_MIST_DDR   DDRC
 #define COOLANT_MIST_PORT  PORTC
 #define COOLANT_MIST_BIT   4 // Uno Analog Pin 4
-#endif  
+#endif
 
   // Define user-control controls (cycle start, reset, feed hold) input pins.
   // NOTE: All CONTROLs pins must be on the same port and not on a port with other input pins (limits).
@@ -288,8 +288,8 @@
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
 #define STEP_PORT       GPIOB
 #define RCC_STEP_PORT   RCC_APB2Periph_GPIOB
-#define X_STEP_BIT      7  
-#define Y_STEP_BIT      5  
+#define X_STEP_BIT      7
+#define Y_STEP_BIT      5
 #define Z_STEP_BIT      1
 #define A_STEP_BIT      11
 #define B_STEP_BIT      14
@@ -298,8 +298,8 @@
   // Define step direction output pins. NOTE: All direction pins must be on the same port.
 #define DIRECTION_PORT      GPIOB
 #define RCC_DIRECTION_PORT   RCC_APB2Periph_GPIOB
-#define X_DIRECTION_BIT   6  
-#define Y_DIRECTION_BIT   0  
+#define X_DIRECTION_BIT   6
+#define Y_DIRECTION_BIT   0
 #define Z_DIRECTION_BIT   10
 #define A_DIRECTION_BIT   12
 #define B_DIRECTION_BIT   15
@@ -308,34 +308,34 @@
   // Define stepper driver enable/disable output pin.
 #define STEPPERS_DISABLE_PORT   GPIOB
 #define RCC_STEPPERS_DISABLE_PORT RCC_APB2Periph_GPIOB
-#define STEPPERS_DISABLE_BIT    13  
+#define STEPPERS_DISABLE_BIT    13
 #define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
 #define ResetStepperDisableBit() GPIO_SetBits(STEPPERS_DISABLE_PORT,STEPPERS_DISABLE_MASK)
 #define SetStepperDisableBit() GPIO_ResetBits(STEPPERS_DISABLE_PORT,STEPPERS_DISABLE_MASK)
 
 
-  // Define homing/hard limit switch input pins and limit interrupt vectors. 
+  // Define homing/hard limit switch input pins and limit interrupt vectors.
   // NOTE: All limit bit pins must be on the same port
 #define LIMIT_PIN        GPIOA
 #define LIMIT_PORT       GPIOA
 #define RCC_LIMIT_PORT   RCC_APB2Periph_GPIOA
 #define GPIO_LIMIT_PORT  GPIO_PortSourceGPIOA
-#define X_LIMIT_BIT      2  
-#define Y_LIMIT_BIT      3  
-#define Z_LIMIT_BIT      4  
+#define X_LIMIT_BIT      2
+#define Y_LIMIT_BIT      3
+#define Z_LIMIT_BIT      4
 #define A_LIMIT_BIT      4 //sorry no more pins
 #define B_LIMIT_BIT      4 //sorry no more pins
 
-#define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+#define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)  ) // All limit bits
 
   // Define spindle enable and spindle direction output pins.
 #define SPINDLE_ENABLE_PORT   GPIOA
 #define RCC_SPINDLE_ENABLE_PORT RCC_APB2Periph_GPIOA
-#define SPINDLE_ENABLE_BIT    9  // 
+#define SPINDLE_ENABLE_BIT    9  //
 #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
 #define SPINDLE_DIRECTION_DDR   GPIOA
 #define SPINDLE_DIRECTION_PORT  GPIOA
-#define SPINDLE_DIRECTION_BIT   15  // 
+#define SPINDLE_DIRECTION_BIT   15  //
 #endif
 #define SetSpindleEnablebit()       GPIO_WriteBit(SPINDLE_ENABLE_PORT, 1 << SPINDLE_ENABLE_BIT, Bit_SET)
 #define ResetSpindleEnablebit()     GPIO_WriteBit(SPINDLE_ENABLE_PORT, 1 << SPINDLE_ENABLE_BIT, Bit_RESET)
@@ -347,10 +347,10 @@
   // a later date if flash and memory space allows.
 #define COOLANT_FLOOD_PORT            GPIOB
 #define RCC_COOLANT_FLOOD_PORT        RCC_APB2Periph_GPIOB
-#define COOLANT_FLOOD_BIT             3  
+#define COOLANT_FLOOD_BIT             3
 #define COOLANT_MIST_PORT             GPIOB
 #define RCC_COOLANT_MIST_PORT         RCC_APB2Periph_GPIOB
-#define COOLANT_MIST_BIT              4 
+#define COOLANT_MIST_BIT              4
 
   // Define user-control controls (cycle start, reset, feed hold) input pins.
   // NOTE: All CONTROLs pins must be on the same port and not on a port with other input pins (limits).
@@ -358,16 +358,16 @@
 #define CONTROL_PORT                  GPIOA
 #define RCC_CONTROL_PORT              RCC_APB2Periph_GPIOA
 #define GPIO_CONTROL_PORT             GPIO_PortSourceGPIOA
-#define CONTROL_RESET_BIT             12  
-#define CONTROL_FEED_HOLD_BIT         13  
-#define CONTROL_CYCLE_START_BIT       14 
+#define CONTROL_RESET_BIT             12
+#define CONTROL_FEED_HOLD_BIT         13
+#define CONTROL_CYCLE_START_BIT       14
 #define CONTROL_SAFETY_DOOR_BIT       1
 #define CONTROL_MASK                 ((1<<CONTROL_RESET_BIT)|(1<<CONTROL_FEED_HOLD_BIT)|(1<<CONTROL_CYCLE_START_BIT)|(1<<CONTROL_SAFETY_DOOR_BIT))
 
   // Define probe switch input pin.
 #define PROBE_PORT                    GPIOA
 #define RCC_PROBE_PORT                RCC_APB2Periph_GPIOA
-#define PROBE_BIT                     0 
+#define PROBE_BIT                     0
 #define PROBE_MASK                    (1<<PROBE_BIT)
 
   // Start of PWM & Stepper Enabled Spindle
@@ -378,7 +378,7 @@
 #define SPINDLE_PWM_DDR	            GPIOA
 #define SPINDLE_PWM_PORT            GPIOA
 #define RCC_SPINDLE_PWM_PORT        RCC_APB2Periph_GPIOA
-#define SPINDLE_PWM_BIT	            8    
+#define SPINDLE_PWM_BIT	            8
 #endif // End of VARIABLE_SPINDLE
 #define SPINDLE_PWM_MAX_VALUE       255
 #ifndef SPINDLE_PWM_MIN_VALUE
@@ -388,22 +388,22 @@
 #define SPINDLE_PWM_RANGE         (SPINDLE_PWM_MAX_VALUE-SPINDLE_PWM_MIN_VALUE)
 
   //  Port A                                         Port B
-  //   0      X_STEP_BIT                             
-  //   1      Y_STEP_BIT                            
-  //   2      Z_STEP_BIT                               
+  //   0      X_STEP_BIT
+  //   1      Y_STEP_BIT
+  //   2      Z_STEP_BIT
   //   3      X_DIRECTION_BIT                       COOLANT_FLOOD_BIT
   //   4      Y_DIRECTION_BIT                       COOLANT_MIST_BIT
   //   5      Z_DIRECTION_BIT                       CONTROL_RESET_BIT
-  //   6      STEPPERS_DISABLE_BIT                  CONTROL_FEED_HOLD_BIT    
+  //   6      STEPPERS_DISABLE_BIT                  CONTROL_FEED_HOLD_BIT
   //   7                                            CONTROL_CYCLE_START_BIT
-  //   8      SPINDLE_PWM_BIT                       CONTROL_SAFETY_DOOR_BIT    
-  //   9                             
+  //   8      SPINDLE_PWM_BIT                       CONTROL_SAFETY_DOOR_BIT
+  //   9
   //   10                                            X_LIMIT_BIT
   //   11                                            Y_LIMIT_BIT
   //   12                                            Z_LIMIT_BIT
   //   13 14 SWD																		SPINDLE_ENABLE_BIT
 //     14																						SPINDLE_DIRECTION_BIT
-  //   15     PROBE_BIT					
+  //   15     PROBE_BIT
 
 #endif
 /*

@@ -21,7 +21,7 @@ X_AR = $(XTOOLS_DIR)/bin/arm-none-eabi-ar
 X_LD = $(XTOOLS_DIR)/bin/arm-none-eabi-ld
 X_GDB = $(XTOOLS_DIR)/bin/arm-none-eabi-gdb
 
-OUT_DIR = debug
+OUT_DIR = build
 
 OUTPUT = grbl-stm32
 
