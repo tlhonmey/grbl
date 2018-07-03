@@ -343,8 +343,8 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
   else { memcpy(position_steps, pl.position, sizeof(pl.position)); }
 
   #ifdef COREXY
-    target_steps[A_MOTOR] = lround(target[A_MOTOR]*settings.steps_per_mm[A_MOTOR]);
-    target_steps[B_MOTOR] = lround(target[B_MOTOR]*settings.steps_per_mm[B_MOTOR]);
+    target_steps[A_MOTOR] = lround(target[A_MOTOR]*settings.steps_per_unit[A_MOTOR]);
+    target_steps[B_MOTOR] = lround(target[B_MOTOR]*settings.steps_per_unit[B_MOTOR]);
     block->steps[A_MOTOR] = labs((target_steps[X_AXIS]-position_steps[X_AXIS]) + (target_steps[Y_AXIS]-position_steps[Y_AXIS]));
     block->steps[B_MOTOR] = labs((target_steps[X_AXIS]-position_steps[X_AXIS]) - (target_steps[Y_AXIS]-position_steps[Y_AXIS]));
   #endif
@@ -355,22 +355,22 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
     // NOTE: Computes true distance from converted step values.
     #ifdef COREXY
       if ( !(idx == A_MOTOR) && !(idx == B_MOTOR) ) {
-        target_steps[idx] = lroundf(target[idx]*settings.steps_per_mm[idx]);
+        target_steps[idx] = lroundf(target[idx]*settings.steps_per_unit[idx]);
         block->steps[idx] = fabsf(target_steps[idx]-position_steps[idx]);
       }
       block->step_event_count = max(block->step_event_count, block->steps[idx]);
       if (idx == A_MOTOR) {
-        delta_mm = (target_steps[X_AXIS]-position_steps[X_AXIS] + target_steps[Y_AXIS]-position_steps[Y_AXIS])/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[X_AXIS]-position_steps[X_AXIS] + target_steps[Y_AXIS]-position_steps[Y_AXIS])/settings.steps_per_unit[idx];
       } else if (idx == B_MOTOR) {
-        delta_mm = (target_steps[X_AXIS]-position_steps[X_AXIS] - target_steps[Y_AXIS]+position_steps[Y_AXIS])/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[X_AXIS]-position_steps[X_AXIS] - target_steps[Y_AXIS]+position_steps[Y_AXIS])/settings.steps_per_unit[idx];
       } else {
-        delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_unit[idx];
       }
     #else
-      target_steps[idx] = lroundf(target[idx]*settings.steps_per_mm[idx]);
+      target_steps[idx] = lroundf(target[idx]*settings.steps_per_unit[idx]);
       block->steps[idx] = abs(target_steps[idx]-position_steps[idx]);
       block->step_event_count = max(block->step_event_count, block->steps[idx]);
-      delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_mm[idx];
+      delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_unit[idx];
 	  #endif
     unit_vec[idx] = delta_mm; // Store unit vector numerator
 

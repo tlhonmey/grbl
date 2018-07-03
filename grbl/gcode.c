@@ -300,6 +300,14 @@ uint8_t gc_execute_line(char *line)
           // case 'B': // Not supported
           // case 'C': // Not supported
           // case 'D': // Not supported
+          #if N_AXIS > 3
+            #ifdef A_AXIS
+              case 'A': word_bit = WORD_A; gc_block.values.xyz[A_AXIS] = value; axis_words |= (1<<A_AXIS); break;
+            #endif
+            #ifdef B_AXIS
+              case 'B': word_bit = WORD_B; gc_block.values.xyz[B_AXIS] = value; axis_words |= (1<<B_AXIS); break;
+            #endif
+          #endif
           case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
           // case 'H': // Not supported
           case 'I': word_bit = WORD_I; gc_block.values.ijk[X_AXIS] = value; ijk_words |= (1<<X_AXIS); break;
@@ -473,7 +481,11 @@ uint8_t gc_execute_line(char *line)
   // Pre-convert XYZ coordinate values to millimeters, if applicable.
   uint8_t idx;
   if (gc_block.modal.units == UNITS_MODE_INCHES) {
+  #if N_AXIS > 3
+    for (idx=0; idx<N_AXIS_LINEAR; idx++) { // Axes indices are consistent, so loop may be used.
+  #else
     for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used.
+  #endif
       if (bit_istrue(axis_words,bit(idx)) ) {
         gc_block.values.xyz[idx] *= MM_PER_INCH;
       }
@@ -786,7 +798,11 @@ uint8_t gc_execute_line(char *line)
 
             // Convert IJK values to proper units.
             if (gc_block.modal.units == UNITS_MODE_INCHES) {
+            #if N_AXIS > 3
+              for (idx=0; idx<N_AXIS_LINEAR; idx++) { // Axes indices are consistent, so loop may be used to save flash space.
+            # else
               for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used to save flash space.
+            #endif
                 if (ijk_words & bit(idx)) { gc_block.values.ijk[idx] *= MM_PER_INCH; }
               }
             }
@@ -833,7 +849,11 @@ uint8_t gc_execute_line(char *line)
   } else {
       bit_false(value_words, (bit(WORD_N) | bit(WORD_F) | bit(WORD_S) | bit(WORD_T))); // Remove single-meaning value words.
   }
-  if (axis_command) { bit_false(value_words,(bit(WORD_X)|bit(WORD_Y)|bit(WORD_Z))); } // Remove axis words.
+#if N_AXIS > 3
+  if (axis_command) { bit_false(value_words,(bit(WORD_X)|bit(WORD_Y)|bit(WORD_Z)|bit(WORD_A)|bit(WORD_B))); } // Remove axis words.
+#else
+   if (axis_command) { bit_false(value_words,(bit(WORD_X)|bit(WORD_Y)|bit(WORD_Z))); } // Remove axis words.
+#endif
   if (value_words) { FAIL(STATUS_GCODE_UNUSED_WORDS); } // [Unused words]
 
   /* -------------------------------------------------------------------------------------

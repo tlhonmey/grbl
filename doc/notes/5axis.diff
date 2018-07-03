@@ -1,0 +1,2557 @@
+diff --git a/COPYING b/COPYING
+index de86f6f..93fa11b 100644
+--- a/COPYING
++++ b/COPYING
+@@ -4,6 +4,7 @@ COPYRIGHT NOTICE FOR GRBL:
+ 
+ Grbl - Embedded CNC g-code interpreter and motion-controller
+ 
++Copyright (c) 2017-2018 Gauthier Briere
+ Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+ Copyright (c) 2009-2011 Simen Svale Skogsrud
+ Copyright (c) 2011 Jens Geisler
+diff --git a/Makefile b/Makefile
+index 6d97edf..a95f53c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -30,7 +30,8 @@
+ 
+ DEVICE     ?= atmega2560
+ CLOCK      = 16000000L
+-PROGRAMMER ?= -c avrisp2 -P usb
++###PROGRAMMER ?= -c avrisp2 -P usb
++PROGRAMMER ?= -D -v -c avrisp2 -P /dev/ttyUSB0
+ SOURCE    = main.c motion_control.c gcode.c spindle_control.c coolant_control.c serial.c \
+              protocol.c stepper.c eeprom.c settings.c planner.c nuts_bolts.c limits.c \
+              print.c probe.c report.c system.c sleep.c jog.c
+diff --git a/doc/csv/setting_codes_en_US.csv b/doc/csv/setting_codes_en_US.csv
+old mode 100644
+new mode 100755
+index fb97a3f..c0e3de2
+--- a/doc/csv/setting_codes_en_US.csv
++++ b/doc/csv/setting_codes_en_US.csv
+@@ -24,12 +24,20 @@
+ "100","X-axis travel resolution","step/mm","X-axis travel resolution in steps per millimeter."
+ "101","Y-axis travel resolution","step/mm","Y-axis travel resolution in steps per millimeter."
+ "102","Z-axis travel resolution","step/mm","Z-axis travel resolution in steps per millimeter."
++"103","A-axis travel resolution","step/degre","A-Axis travel resolution in steps per degre"
++"104","B-axis travel resolution","step/degre","B-Axis travel resolution in steps per degre"
+ "110","X-axis maximum rate","mm/min","X-axis maximum rate. Used as G0 rapid rate."
+ "111","Y-axis maximum rate","mm/min","Y-axis maximum rate. Used as G0 rapid rate."
+ "112","Z-axis maximum rate","mm/min","Z-axis maximum rate. Used as G0 rapid rate."
++"113","A-axis maximum rate","degre/min","A-axis maximum rate. Used as G0 rapid rate"
++"114","B-axis maximum rate","degre/min","B-axis maximum rate. Used as G0 rapid rate"
+ "120","X-axis acceleration","mm/sec^2","X-axis acceleration. Used for motion planning to not exceed motor torque and lose steps."
+ "121","Y-axis acceleration","mm/sec^2","Y-axis acceleration. Used for motion planning to not exceed motor torque and lose steps."
+ "122","Z-axis acceleration","mm/sec^2","Z-axis acceleration. Used for motion planning to not exceed motor torque and lose steps."
++"123","A-Axis acceleration","degre/sec^2","A-axis acceleration. Used for motion planning to not exceed motor torque and lose steps."
++"124","B-Axis acceleration","degre/sec^2","B-axis acceleration. Used for motion planning to not exceed motor torque and lose steps."
+ "130","X-axis maximum travel","millimeters","Maximum X-axis travel distance from homing switch. Determines valid machine space for soft-limits and homing search distances."
+ "131","Y-axis maximum travel","millimeters","Maximum Y-axis travel distance from homing switch. Determines valid machine space for soft-limits and homing search distances."
+ "132","Z-axis maximum travel","millimeters","Maximum Z-axis travel distance from homing switch. Determines valid machine space for soft-limits and homing search distances."
++"133","A-axis maximum travel","degres","Maximum A-axis travel distance from homing switch. Determines valid machine space for soft-limits and homing search distances."
++"134","B-axis maximum travel","degres","Maximum B-axis travel distance from homing switch. Determines valid machine space for soft-limits and homing search distances."
+diff --git a/doc/markdown/interface.md b/doc/markdown/interface.md
+old mode 100644
+new mode 100755
+index 184603e..c454bed
+--- a/doc/markdown/interface.md
++++ b/doc/markdown/interface.md
+@@ -266,15 +266,23 @@ $32=0
+ $100=250.000
+ $101=250.000
+ $102=250.000
++$103=8.888889
++$104=8.888889
+ $110=500.000
+ $111=500.000
+ $112=500.000
++$113=1440.000
++$114=1440.000
+ $120=10.000
+ $121=10.000
+ $122=10.000
++$123=1000.000
++$124=1000.000
+ $130=200.000
+ $131=200.000
+ $132=200.000
++$133=180.000
++$134=360.000
+ ok
+ ```
+ 
+@@ -305,16 +313,23 @@ ok
+ | **`100`** | X-axis steps per millimeter |
+ | **`101`** | Y-axis steps per millimeter |
+ | **`102`** | Z-axis steps per millimeter |
++| **`103`** | A-axis steps per degre |
++| **`104`** | B-axis steps per degre |
+ | **`110`** | X-axis maximum rate, mm/min |
+ | **`111`** | Y-axis maximum rate, mm/min |
+ | **`112`** | Z-axis maximum rate, mm/min |
++| **`113`** | A-axis maximum rate, degres/min |
++| **`114`** | B-axis maximum rate, degres/min |
+ | **`120`** | X-axis acceleration, mm/sec^2 |
+ | **`121`** | Y-axis acceleration, mm/sec^2 |
+ | **`122`** | Z-axis acceleration, mm/sec^2 |
++| **`123`** | A-axis acceleration, degres/sec^2 |
++| **`124`** | B-axis acceleration, degres/sec^2 |
+ | **`130`** | X-axis maximum travel, millimeters |
+ | **`131`** | Y-axis maximum travel, millimeters |
+ | **`132`** | Z-axis maximum travel, millimeters |
+-
++| **`133`** | A-axis maximum travel, degres |
++| **`134`** | B-axis maximum travel, degres |
+ 
+ - The other `$Nx=line` message is the print-out of a user-defined startup line, where `x` denotes the startup line order and ranges from `0` to `1` by default. The `line` denotes the startup line to be executed by Grbl upon reset or power-up, except during an ALARM.
+ 
+diff --git a/doc/markdown/settings.md b/doc/markdown/settings.md
+old mode 100644
+new mode 100755
+index 4b54746..582729d
+--- a/doc/markdown/settings.md
++++ b/doc/markdown/settings.md
+@@ -54,15 +54,23 @@ $32=0
+ $100=250.000
+ $101=250.000
+ $102=250.000
++$103=8.888889
++$104=8.888889
+ $110=500.000
+ $111=500.000
+ $112=500.000
++$113=1440.000
++$114=1440.000
+ $120=10.000
+ $121=10.000
+ $122=10.000
++$123=1000.000
++$124=1000.000
+ $130=200.000
+ $131=200.000
+ $132=200.000
++$133=180.000
++$134=360.000
+ ```
+ 
+ #### $x=val - Save Grbl setting
+@@ -98,16 +106,42 @@ This setting inverts the step pulse signal. By default, a step signal starts at
+ 
+ This invert mask setting is a value which stores the axes to invert as bit flags. You really don't need to completely understand how it works. You simply need to enter the settings value for the axes you want to invert. For example, if you want to invert the X and Z axes, you'd send `$2=5` to Grbl and the setting should now read `$2=5 (step port invert mask:00000101)`.
+ 
+-| Setting Value | Mask |Invert X | Invert Y | Invert Z |
+-|:-------------:|:----:|:-------:|:--------:|:--------:|
+-| 0 | 00000000 |N | N | N |
+-| 1 | 00000001 |Y | N | N |
+-| 2 | 00000010 |N | Y | N |
+-| 3 | 00000011 |Y | Y | N |
+-| 4 | 00000100 |N | N | Y |
+-| 5 | 00000101 |Y | N | Y |
+-| 6 | 00000110 |N | Y | Y |
+-| 7 | 00000111 |Y | Y | Y |
++|:-------------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|
++| Setting Value |   Mask   | Invert X | Invert Y | Invert Z | Invert A | Invert B |
++|:-------------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|
++|             0 | 00000000 |     N    |     N    |     N    |     N    |     N    |
++|             1 | 00000001 |     Y    |     N    |     N    |     N    |     N    |
++|             2 | 00000010 |     N    |     Y    |     N    |     N    |     N    |
++|             3 | 00000011 |     Y    |     Y    |     N    |     N    |     N    |
++|             4 | 00000100 |     N    |     N    |     Y    |     N    |     N    |
++|             5 | 00000101 |     Y    |     N    |     Y    |     N    |     N    |
++|             6 | 00000110 |     N    |     Y    |     Y    |     N    |     N    |
++|             7 | 00000111 |     Y    |     Y    |     Y    |     N    |     N    |
++|             8 | 00001000 |     N    |     N    |     N    |     Y    |     N    |
++|             9 | 00001001 |     Y    |     N    |     N    |     Y    |     N    |
++|            10 | 00001010 |     N    |     Y    |     N    |     Y    |     N    |
++|            11 | 00001011 |     Y    |     Y    |     N    |     Y    |     N    |
++|            12 | 00001100 |     N    |     N    |     Y    |     Y    |     N    |
++|            13 | 00001101 |     Y    |     N    |     Y    |     Y    |     N    |
++|            14 | 00001110 |     N    |     Y    |     Y    |     Y    |     N    |
++|            15 | 00001111 |     Y    |     Y    |     Y    |     Y    |     N    |
++|            16 | 00010000 |     N    |     N    |     N    |     N    |     Y    |
++|            17 | 00010001 |     Y    |     N    |     N    |     N    |     Y    |
++|            18 | 00010010 |     N    |     Y    |     N    |     N    |     Y    |
++|            19 | 00010011 |     Y    |     Y    |     N    |     N    |     Y    |
++|            20 | 00010100 |     N    |     N    |     Y    |     N    |     Y    |
++|            21 | 00010101 |     Y    |     N    |     Y    |     N    |     Y    |
++|            22 | 00010110 |     N    |     Y    |     Y    |     N    |     Y    |
++|            23 | 00010111 |     Y    |     Y    |     Y    |     N    |     Y    |
++|            24 | 00011000 |     N    |     N    |     N    |     Y    |     Y    |
++|            25 | 00011001 |     Y    |     N    |     N    |     Y    |     Y    |
++|            26 | 00011010 |     N    |     Y    |     N    |     Y    |     Y    |
++|            27 | 00011011 |     Y    |     Y    |     N    |     Y    |     Y    |
++|            28 | 00011100 |     N    |     N    |     Y    |     Y    |     Y    |
++|            29 | 00011101 |     Y    |     N    |     Y    |     Y    |     Y    |
++|            30 | 00011110 |     N    |     Y    |     Y    |     Y    |     Y    |
++|            31 | 00011111 |     Y    |     Y    |     Y    |     Y    |     Y    |
++|:-------------:|:--------:|:--------:|:--------:|:--------:|:--------:|:--------:|
+ 
+ #### $3 – Direction port invert, mask
+ 
+@@ -145,10 +179,12 @@ To keep things simple and consistent, Grbl v1.1 has only two reporting options.
+ 
+ Use the table below enables and disable reporting options. Simply add the values listed of what you'd like to enable, then save it by sending Grbl your setting value. For example, the default report with machine position and no buffer data reports setting is `$10=1`. If work position and buffer data are desired, the setting will be `$10=2`.
+ 
+-| Report Type | Value | Description |
+-|:-------------:|:----:|:----:|
+-| Position Type | 1 | Enabled `MPos:`. Disabled `WPos:`. |
+-| Buffer Data | 2 | Enabled `Buf:` field appears with planner and serial RX available buffer.
++|:-------------:|:-----:|:-------------------------------------------------------------------------:|
++|  Report Type  | Value | Description                                                               |
++|:-------------:|:-----:|:-------------------------------------------------------------------------:|
++| Position Type |   1   | Enabled `MPos:`. Disabled `WPos:`.                                        |
++| Buffer Data   |   2   | Enabled `Buf:` field appears with planner and serial RX available buffer. |
++|:-------------:|:-----:|:-------------------------------------------------------------------------:|
+ 
+ #### $11 - Junction deviation, mm
+ 
+@@ -237,6 +273,9 @@ Grbl needs to know how far each step will take the tool in reality. To calculate
+ 
+ The steps/mm can then be calculated like this: ```steps_per_mm = (steps_per_revolution*microsteps)/mm_per_rev```
+ 
++#### $103 AND $104 - [A,B] steps/degre
++Idem than step/mm, but for rotational axis 4 and 5
++
+ Compute this value for every axis and write these settings to Grbl.
+ 
+ #### $110, $111 and $112 – [X,Y,Z] Max rate, mm/min
+@@ -247,13 +286,22 @@ The simplest way to determine these values is to test each axis one at a time by
+ 
+ NOTE: This max rate setting also sets the G0 seek rates.
+ 
++#### $113 and $114 - [A,B] Max rate, degre/min
++
++Maximum rate for rotational axis
++
++
+ #### $120, $121, $122 – [X,Y,Z] Acceleration, mm/sec^2
+ 
+ This sets the axes acceleration parameters in mm/second/second. Simplistically, a lower value makes Grbl ease slower into motion, while a higher value yields tighter moves and reaches the desired feed rates much quicker. Much like the max rate setting, each axis has its own acceleration value and are independent of each other. This means that a multi-axis motion will only accelerate as quickly as the lowest contributing axis can.
+ 
+ Again, like the max rate setting, the simplest way to determine the values for this setting is to individually test each axis with slowly increasing values until the motor stalls. Then finalize your acceleration setting with a value 10-20% below this absolute max value. This should account for wear, friction, and mass inertia. We highly recommend that you dry test some G-code programs with your new settings before committing to them. Sometimes the loading on your machine is different when moving in all axes together.
+ 
++#### $123 and $124 - [A,B] Acceleration, degre/sec^2
++
+ 
+ #### $130, $131, $132 – [X,Y,Z] Max travel, mm
+ 
+ This sets the maximum travel from end to end for each axis in mm. This is only useful if you have soft limits (and homing) enabled, as this is only used by Grbl's soft limit feature to check if you have exceeded your machine limits with a motion command.
++
++#### $133, $134 - [A,B] Max travel, degres
+diff --git a/doc/script/simple_stream.py b/doc/script/simple_stream.py
+old mode 100755
+new mode 100644
+diff --git a/doc/script/stream.py b/doc/script/stream.py
+old mode 100755
+new mode 100644
+diff --git a/grbl/config.h b/grbl/config.h
+index bffc41f..3d5f848 100644
+--- a/grbl/config.h
++++ b/grbl/config.h
+@@ -2,6 +2,7 @@
+   config.h - compile time configuration
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -34,12 +35,12 @@
+ // NOTE: OEMs can avoid the need to maintain/update the defaults.h and cpu_map.h files and use only
+ // one configuration file by placing their specific defaults and pin map at the bottom of this file.
+ // If doing so, simply comment out these two defines and see instructions below.
+-#define DEFAULTS_GENERIC
+-#define CPU_MAP_2560_INITIAL
++//#define DEFAULTS_GENERIC
++//#define CPU_MAP_2560_INITIAL
+ 
+ // To use with RAMPS 1.4 Board, comment out the above defines and uncomment the next two defines
+-//#define DEFAULTS_RAMPS_BOARD
+-//#define CPU_MAP_2560_RAMPS_BOARD
++#define DEFAULTS_RAMPS_BOARD
++#define CPU_MAP_2560_RAMPS_BOARD
+ 
+ // Serial baud rate
+ // #define BAUD_RATE 230400
+@@ -107,9 +108,22 @@
+ // will not be affected by pin sharing.
+ // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
+ #ifdef DEFAULTS_RAMPS_BOARD
+-  #define HOMING_CYCLE_0 (1<<X_AXIS)   // Home X axis
+-  #define HOMING_CYCLE_1 (1<<Y_AXIS)   // Home Y axis
+-  #define HOMING_CYCLE_2 (1<<Z_AXIS)   // OPTIONAL: Home Z axis 
++  #if N_AXIS == 4 // 4 axis : homing
++    #define HOMING_CYCLE_0 (1<<AXIS_4) // Home 4th axis (A)
++    #define HOMING_CYCLE_1 (1<<X_AXIS) // Home X axis
++    #define HOMING_CYCLE_2 (1<<Y_AXIS) // Home Y axis
++    #define HOMING_CYCLE_3 (1<<Z_AXIS) // OPTIONAL: Home Z axis
++  #elif N_AXIS == 5 // 5 axis : homing
++    #define HOMING_CYCLE_0 (1<<AXIS_4) // Home 4th axis (A)
++    #define HOMING_CYCLE_1 (1<<AXIS_5) // Home 5th axis (B)
++    #define HOMING_CYCLE_2 (1<<X_AXIS) // Home X axis
++    #define HOMING_CYCLE_3 (1<<Y_AXIS) // Home Y axis
++    #define HOMING_CYCLE_4 (1<<Z_AXIS) // OPTIONAL: Home Z axis
++  #else // Classic 3 axis
++    #define HOMING_CYCLE_0 (1<<X_AXIS) // Home X axis
++    #define HOMING_CYCLE_1 (1<<Y_AXIS) // Home Y axis
++    #define HOMING_CYCLE_2 (1<<Z_AXIS) // OPTIONAL: Home Z axis
++  #endif
+ #else
+   #define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
+   #define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
+@@ -117,7 +131,7 @@
+ #endif // DEFAULTS_RAMPS_BOARD
+ 
+ // NOTE: The following are two examples to setup homing for 2-axis machines.
+-// #define HOMING_CYCLE_0 ((1<<X_AXIS)|(1<<Y_AXIS))  // NOT COMPATIBLE WITH COREXY: Homes both X-Y in one cycle. 
++// #define HOMING_CYCLE_0 ((1<<X_AXIS)|(1<<Y_AXIS))  // NOT COMPATIBLE WITH COREXY: Homes both X-Y in one cycle.
+ 
+ // #define HOMING_CYCLE_0 (1<<X_AXIS)  // COREXY COMPATIBLE: First home X
+ // #define HOMING_CYCLE_1 (1<<Y_AXIS)  // COREXY COMPATIBLE: Then home Y
+@@ -127,7 +141,7 @@
+ // greater.
+ #define N_HOMING_LOCATE_CYCLE 1 // Integer (1-128)
+ 
+-// Enables single axis homing commands. $HX, $HY, and $HZ for X, Y, and Z-axis homing. The full homing 
++// Enables single axis homing commands. $HX, $HY, and $HZ for X, Y, and Z-axis homing. The full homing
+ // cycle is still invoked by the $H command. This is disabled by default. It's here only to address
+ // users that need to switch between a two-axis and three-axis machine. This is actually very rare.
+ // If you have a two-axis machine, DON'T USE THIS. Instead, just alter the homing cycle for two-axes.
+@@ -207,7 +221,7 @@
+   // Only enable the following line if you have - (min) limit switches attached
+   //#define INVERT_MIN_LIMIT_PIN_MASK ((1<<X_AXIS) | (1<<Y_AXIS) | (1<<Z_AXIS))
+   // Only enable the following line if you have + (max) limit switches attached
+-  //#define INVERT_MAX_LIMIT_PIN_MASK ((1<<X_AXIS) | (1<<Y_AXIS) | (1<<Z_AXIS))  
++  //#define INVERT_MAX_LIMIT_PIN_MASK ((1<<X_AXIS) | (1<<Y_AXIS) | (1<<Z_AXIS))
+ #endif
+ 
+ // Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
+@@ -266,7 +280,7 @@
+ 
+ // The status report change for Grbl v1.1 and after also removed the ability to disable/enable most data
+ // fields from the report. This caused issues for GUI developers, who've had to manage several scenarios
+-// and configurations. The increased efficiency of the new reporting style allows for all data fields to 
++// and configurations. The increased efficiency of the new reporting style allows for all data fields to
+ // be sent without potential performance issues.
+ // NOTE: The options below are here only provide a way to disable certain data fields if a unique
+ // situation demands it, but be aware GUIs may depend on this data. If disabled, it may not be compatible.
+@@ -347,8 +361,8 @@
+ // NOTE: Compute duty cycle at the minimum PWM by this equation: (% duty cycle)=(SPINDLE_PWM_MIN_VALUE/255)*100
+ // #define SPINDLE_PWM_MIN_VALUE 5 // Default disabled. Uncomment to enable. Must be greater than zero. Integer (1-255).
+ 
+-// Alters the behavior of the spindle enable pin. By default, Grbl will not disable the enable pin if 
+-// spindle speed is zero and M3/4 is active, but still sets the PWM output to zero. This allows the users 
++// Alters the behavior of the spindle enable pin. By default, Grbl will not disable the enable pin if
++// spindle speed is zero and M3/4 is active, but still sets the PWM output to zero. This allows the users
+ // to know if the spindle is active and use it as an additional control input. However, in some use cases,
+ // a user may want the enable pin to disable with a zero spindle speed and re-enable when spindle speed is
+ // greater than zero. This option does that.
+@@ -412,10 +426,10 @@
+ // #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
+ 
+ // The number of linear motions in the planner buffer to be planned at any give time. The vast
+-// majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra 
++// majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra
+ // available RAM, like when re-compiling for a Mega or Sanguino. Or decrease if the Arduino
+ // begins to crash due to the lack of available RAM or if the CPU is having trouble keeping
+-// up with planning new incoming motions as they are executed. 
++// up with planning new incoming motions as they are executed.
+ // #define BLOCK_BUFFER_SIZE 36  // Uncomment to override default in planner.h.
+ 
+ // Governs the size of the intermediary step segment buffer between the step execution algorithm
+@@ -435,7 +449,7 @@
+ // support up to 256 characters. In future versions, this default will be increased, when
+ // we know how much extra memory space we can re-invest into this.
+ // #define LINE_BUFFER_SIZE 256  // Uncomment to override default in protocol.h
+-  
++
+ // Serial send and receive buffer size. The receive buffer is often used as another streaming
+ // buffer to store incoming blocks to be processed by Grbl when its ready. Most streaming
+ // interfaces will character count and track each block send to each block response. So,
+@@ -451,23 +465,23 @@
+ // NOTE: Be very careful when changing this value. Check EEPROM address locations to make sure
+ // these string storage locations won't corrupt one another.
+ // #define EEPROM_LINE_SIZE 80 // Uncomment to override defaults in settings.h
+-  
++
+ // Toggles XON/XOFF software flow control for serial communications. Not officially supported
+ // due to problems involving the Atmega8U2 USB-to-serial chips on current Arduinos. The firmware
+-// on these chips do not support XON/XOFF flow control characters and the intermediate buffer 
+-// in the chips cause latency and overflow problems with standard terminal programs. However, 
++// on these chips do not support XON/XOFF flow control characters and the intermediate buffer
++// in the chips cause latency and overflow problems with standard terminal programs. However,
+ // using specifically-programmed UI's to manage this latency problem has been confirmed to work.
+ // As well as, older FTDI FT232RL-based Arduinos(Duemilanove) are known to work with standard
+ // terminal programs since their firmware correctly manage these XON/XOFF characters. In any
+ // case, please report any successes to grbl administrators!
+ // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
+ 
+-// A simple software debouncing feature for hard limit switches. When enabled, the interrupt 
+-// monitoring the hard limit switch pins will enable the Arduino's watchdog timer to re-check 
+-// the limit pin state after a delay of about 32msec. This can help with CNC machines with 
+-// problematic false triggering of their hard limit switches, but it WILL NOT fix issues with 
++// A simple software debouncing feature for hard limit switches. When enabled, the interrupt
++// monitoring the hard limit switch pins will enable the Arduino's watchdog timer to re-check
++// the limit pin state after a delay of about 32msec. This can help with CNC machines with
++// problematic false triggering of their hard limit switches, but it WILL NOT fix issues with
+ // electrical interference on the signal cables from external sources. It's recommended to first
+-// use shielded signal cables with their shielding connected to ground (old USB/computer cables 
++// use shielded signal cables with their shielding connected to ground (old USB/computer cables
+ // work well and are cheap to find) and wire in a low-pass circuit into each limit pin.
+ // #define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
+ 
+@@ -542,8 +556,8 @@
+ #define FORCE_BUFFER_SYNC_DURING_WCO_CHANGE // Default enabled. Comment to disable.
+ 
+ // By default, Grbl disables feed rate overrides for all G38.x probe cycle commands. Although this
+-// may be different than some pro-class machine control, it's arguable that it should be this way. 
+-// Most probe sensors produce different levels of error that is dependent on rate of speed. By 
++// may be different than some pro-class machine control, it's arguable that it should be this way.
++// Most probe sensors produce different levels of error that is dependent on rate of speed. By
+ // keeping probing cycles to their programmed feed rates, the probe sensor should be a lot more
+ // repeatable. If needed, you can disable this behavior by uncommenting the define below.
+ // #define ALLOW_FEED_OVERRIDE_DURING_PROBE_CYCLES // Default disabled. Uncomment to enable.
+@@ -571,23 +585,23 @@
+ #define PARKING_PULLOUT_INCREMENT 5.0 // Spindle pull-out and plunge distance in mm. Incremental distance.
+                                       // Must be positive value or equal to zero.
+ 
+-// Enables a special set of M-code commands that enables and disables the parking motion. 
+-// These are controlled by `M56`, `M56 P1`, or `M56 Px` to enable and `M56 P0` to disable. 
+-// The command is modal and will be set after a planner sync. Since it is g-code, it is 
++// Enables a special set of M-code commands that enables and disables the parking motion.
++// These are controlled by `M56`, `M56 P1`, or `M56 Px` to enable and `M56 P0` to disable.
++// The command is modal and will be set after a planner sync. Since it is g-code, it is
+ // executed in sync with g-code commands. It is not a real-time command.
+-// NOTE: PARKING_ENABLE is required. By default, M56 is active upon initialization. Use 
++// NOTE: PARKING_ENABLE is required. By default, M56 is active upon initialization. Use
+ // DEACTIVATE_PARKING_UPON_INIT to set M56 P0 as the power-up default.
+ // #define ENABLE_PARKING_OVERRIDE_CONTROL   // Default disabled. Uncomment to enable
+ // #define DEACTIVATE_PARKING_UPON_INIT // Default disabled. Uncomment to enable.
+ 
+ // This option will automatically disab
+-// Enables and configures Grbl's sleep mode feature. If the spindle or coolant are powered and Grbl 
++// Enables and configures Grbl's sleep mode feature. If the spindle or coolant are powered and Grbl
+ // is not actively moving or receiving any commands, a sleep timer will start. If any data or commands
+ // are received, the sleep timer will reset and restart until the above condition are not satisfied.
+ // If the sleep timer elaspes, Grbl will immediately execute the sleep mode by shutting down the spindle
+ // and coolant and entering a safe sleep state. If parking is enabled, Grbl will park the machine as
+ // well. While in sleep mode, only a hard/soft reset will exit it and the job will be unrecoverable.
+-// NOTE: Sleep mode is a safety feature, primarily to address communication disconnect problems. To 
++// NOTE: Sleep mode is a safety feature, primarily to address communication disconnect problems. To
+ // keep Grbl from sleeping, employ a stream of '?' status report commands as a connection "heartbeat".
+ // #define SLEEP_ENABLE  // Default disabled. Uncomment to enable.
+ #define SLEEP_DURATION 5.0 // Float (0.25 - 61.0) seconds before sleep mode is executed.
+@@ -599,7 +613,7 @@
+ #define DISABLE_LASER_DURING_HOLD // Default enabled. Comment to disable.
+ 
+ // Enables a piecewise linear model of the spindle PWM/speed output. Requires a solution by the
+-// 'fit_nonlinear_spindle.py' script in the /doc/script folder of the repo. See file comments 
++// 'fit_nonlinear_spindle.py' script in the /doc/script folder of the repo. See file comments
+ // on how to gather spindle data and run the script to generate a solution.
+ // #define ENABLE_PIECEWISE_LINEAR_SPINDLE  // Default disabled. Uncomment to enable.
+ 
+diff --git a/grbl/cpu_map.h b/grbl/cpu_map.h
+old mode 100644
+new mode 100755
+index 6cef4d9..b386d13
+--- a/grbl/cpu_map.h
++++ b/grbl/cpu_map.h
+@@ -2,6 +2,7 @@
+   cpu_map.h - CPU and pin mapping configuration file
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
+ 
+   Grbl is free software: you can redistribute it and/or modify
+@@ -152,9 +153,21 @@
+   #define STEP_PORT_0 F
+   #define STEP_PORT_1 F
+   #define STEP_PORT_2 L
++  #if N_AXIS > 3
++    #define STEP_PORT_3 A // Axis number 4 (Ramps E0)
++  #endif
++  #if N_AXIS > 4
++    #define STEP_PORT_4 C // Axis number 5 (Ramps E1)
++  #endif
+   #define STEP_BIT_0 0  // X Step - Pin A0
+   #define STEP_BIT_1 6  // Y Step - Pin A6
+   #define STEP_BIT_2 3  // Z Step - Pin D46
++  #if N_AXIS > 3
++    #define STEP_BIT_3 4 // Axis number 4 Step - Pin D26
++  #endif
++  #if N_AXIS > 4
++    #define STEP_BIT_4 1 // Axis number 5 Step - Pin D36
++  #endif
+   #define _STEP_BIT(i) STEP_BIT_##i
+   #define STEP_BIT(i) _STEP_BIT(i)
+   #define STEP_DDR(i) _DDR(STEP_PORT_##i)
+@@ -166,9 +179,21 @@
+   #define DIRECTION_PORT_0 F
+   #define DIRECTION_PORT_1 F
+   #define DIRECTION_PORT_2 L
++  #if N_AXIS > 3
++    #define DIRECTION_PORT_3 A // Axis number 4 (Ramps E0)
++  #endif
++  #if N_AXIS > 4
++    #define DIRECTION_PORT_4 C // Axis number 5 (Ramps E1)
++  #endif
+   #define DIRECTION_BIT_0 1 // X Dir - Pin A1
+   #define DIRECTION_BIT_1 7 // Y Dir - Pin A7
+   #define DIRECTION_BIT_2 1 // Z Dir - Pin D48
++  #if N_AXIS > 3
++    #define DIRECTION_BIT_3 6 // Axis number 4 Step - Pin D28
++  #endif
++  #if N_AXIS > 4
++    #define DIRECTION_BIT_4 3 // Axis number 5 Step - Pin D34
++  #endif
+   #define _DIRECTION_BIT(i) DIRECTION_BIT_##i
+   #define DIRECTION_BIT(i) _DIRECTION_BIT(i)
+   #define DIRECTION_DDR(i) _DDR(DIRECTION_PORT_##i)
+@@ -180,9 +205,21 @@
+   #define STEPPER_DISABLE_PORT_0 D
+   #define STEPPER_DISABLE_PORT_1 F
+   #define STEPPER_DISABLE_PORT_2 K
++  #if N_AXIS > 3
++    #define STEPPER_DISABLE_PORT_3 A // Axis number 4 (Ramps E0)
++  #endif
++  #if N_AXIS > 4
++    #define STEPPER_DISABLE_PORT_4 C // Axis number 5 (Ramps E1)
++  #endif
+   #define STEPPER_DISABLE_BIT_0 7 // X Enable - Pin D38
+   #define STEPPER_DISABLE_BIT_1 2 // Y Enable - Pin A2
+   #define STEPPER_DISABLE_BIT_2 0 // Z Enable - Pin A8
++  #if N_AXIS > 3
++    #define STEPPER_DISABLE_BIT_3 2 // Axis number 4 Step - Pin D24
++  #endif
++  #if N_AXIS > 4
++    #define STEPPER_DISABLE_BIT_4 7 // Axis number 5 Step - Pin D30
++  #endif
+   #define STEPPER_DISABLE_BIT(i) STEPPER_DISABLE_BIT_##i
+   #define STEPPER_DISABLE_DDR(i) _DDR(STEPPER_DISABLE_PORT_##i)
+   #define STEPPER_DISABLE_PORT(i) _PORT(STEPPER_DISABLE_PORT_##i)
+@@ -192,9 +229,21 @@
+   #define MIN_LIMIT_PORT_0 E
+   #define MIN_LIMIT_PORT_1 J
+   #define MIN_LIMIT_PORT_2 D
++  #if N_AXIS > 3
++    #define MIN_LIMIT_PORT_3 L
++  #endif
++  #if N_AXIS > 4
++    #define MIN_LIMIT_PORT_4 L
++  #endif
+   #define MIN_LIMIT_BIT_0 5 // X Limit Min - Pin D3
+   #define MIN_LIMIT_BIT_1 1 // Y Limit Min - Pin D14
+   #define MIN_LIMIT_BIT_2 3 // Z Limit Min - Pin D18
++  #if N_AXIS > 3
++    #define MIN_LIMIT_BIT_3 7 // Axis number 4 : RAMPS AUX2 pin D42
++  #endif
++  #if N_AXIS > 4
++    #define MIN_LIMIT_BIT_4 5 // Axis number 5 : RAMPS AUX2 pin D44
++  #endif
+   #define _MIN_LIMIT_BIT(i) MIN_LIMIT_BIT_##i
+   #define MIN_LIMIT_BIT(i) _MIN_LIMIT_BIT(i)
+   #define MIN_LIMIT_DDR(i) _DDR(MIN_LIMIT_PORT_##i)
+@@ -204,9 +253,21 @@
+   #define MAX_LIMIT_PORT_0 E
+   #define MAX_LIMIT_PORT_1 J
+   #define MAX_LIMIT_PORT_2 D
++  #if N_AXIS > 3
++    #define MAX_LIMIT_PORT_3 G
++  #endif
++  #if N_AXIS > 4
++    #define MAX_LIMIT_PORT_4 F
++  #endif
+   #define MAX_LIMIT_BIT_0 4 // X Limit Max - Pin D2
+   #define MAX_LIMIT_BIT_1 0 // Y Limit Max - Pin D15
+   #define MAX_LIMIT_BIT_2 2 // Z Limit Max - Pin D19
++  #if N_AXIS > 3
++    #define MAX_LIMIT_BIT_3 1 // Axis number 4 : RAMPS AUX2 pin D40
++  #endif
++  #if N_AXIS > 4
++    #define MAX_LIMIT_BIT_4 5 // Axis number 5 : RAMPS AUX2 pin D59
++  #endif
+   #define _MAX_LIMIT_BIT(i) MAX_LIMIT_BIT_##i
+   #define MAX_LIMIT_BIT(i) _MAX_LIMIT_BIT(i)
+   #define MAX_LIMIT_DDR(i) _DDR(MAX_LIMIT_PORT_##i)
+@@ -222,10 +283,10 @@
+   // Define spindle enable and spindle direction output pins.
+   #define SPINDLE_ENABLE_DDR      DDRG
+   #define SPINDLE_ENABLE_PORT     PORTG
+-  #define SPINDLE_ENABLE_BIT      5 // MEGA2560 Digital Pin 4 - Ramps 1.4 Servo 4 Signal pin
++  #define SPINDLE_ENABLE_BIT      5 // MEGA2560 Digital Pin 4 - Ramps 1.4 Servo 4 Signal pin (D4)
+   #define SPINDLE_DIRECTION_DDR   DDRE
+   #define SPINDLE_DIRECTION_PORT  PORTE
+-  #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5 - Ramps 1.4 Servo 3 Signal pin
++  #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5 - Ramps 1.4 Servo 3 Signal pin (D5)
+ 
+   // Define flood and mist coolant enable output pins.
+   #define COOLANT_FLOOD_DDR   DDRB
+diff --git a/grbl/defaults.h b/grbl/defaults.h
+old mode 100644
+new mode 100755
+index ae80ae0..d9542aa
+--- a/grbl/defaults.h
++++ b/grbl/defaults.h
+@@ -2,6 +2,7 @@
+   defaults.h - defaults settings configuration file
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
+ 
+   Grbl is free software: you can redistribute it and/or modify
+@@ -19,7 +20,7 @@
+ */
+ 
+ /* The defaults.h file serves as a central default settings selector for different machine
+-   types, from DIY CNC mills to CNC conversions of off-the-shelf machines. The settings 
++   types, from DIY CNC mills to CNC conversions of off-the-shelf machines. The settings
+    files listed here are supplied by users, so your results may vary. However, this should
+    give you a good starting point as you get to know your machine and tweak the settings for
+    your nefarious needs.
+@@ -29,9 +30,9 @@
+ 
+ #ifdef DEFAULTS_GENERIC
+   // Grbl generic default settings. Should work across different machines.
+-  #define DEFAULT_X_STEPS_PER_MM 250.0
+-  #define DEFAULT_Y_STEPS_PER_MM 250.0
+-  #define DEFAULT_Z_STEPS_PER_MM 250.0
++  #define DEFAULT_X_STEPS_PER_UNIT 250.0
++  #define DEFAULT_Y_STEPS_PER_UNIT 250.0
++  #define DEFAULT_Z_STEPS_PER_UNIT 250.0
+   #define DEFAULT_X_MAX_RATE 500.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 500.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 500.0 // mm/min
+@@ -71,9 +72,9 @@
+   #define MICROSTEPS 2
+   #define STEPS_PER_REV 200.0
+   #define MM_PER_REV (0.050*MM_PER_INCH) // 0.050 inch/rev leadscrew
+-  #define DEFAULT_X_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+-  #define DEFAULT_Y_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+-  #define DEFAULT_Z_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
++  #define DEFAULT_X_STEPS_PER_UNIT (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
++  #define DEFAULT_Y_STEPS_PER_UNIT (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
++  #define DEFAULT_Z_STEPS_PER_UNIT (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+   #define DEFAULT_X_MAX_RATE 635.0 // mm/min (25 ipm)
+   #define DEFAULT_Y_MAX_RATE 635.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 635.0 // mm/min
+@@ -84,10 +85,10 @@
+   #define DEFAULT_Y_MAX_TRAVEL 125.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_Z_MAX_TRAVEL 170.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_SPINDLE_RPM_MAX 2800.0 // rpm
+-  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
++  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
+   #define DEFAULT_STEPPING_INVERT_MASK 0
+-  #define DEFAULT_DIRECTION_INVERT_MASK ((1<<Y_AXIS)|(1<<Z_AXIS))  
++  #define DEFAULT_DIRECTION_INVERT_MASK ((1<<Y_AXIS)|(1<<Z_AXIS))
+   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-254, 255 keeps steppers enabled)
+   #define DEFAULT_STATUS_REPORT_MASK 1 // MPos enabled
+   #define DEFAULT_JUNCTION_DEVIATION 0.01 // mm
+@@ -116,9 +117,9 @@
+   #define MICROSTEPS_Z 2
+   #define STEP_REVS_Z 400
+   #define MM_PER_REV_Z 1.250 // 1.25 mm/rev leadscrew
+-  #define DEFAULT_X_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Y_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Z_STEPS_PER_MM (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
++  #define DEFAULT_X_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Y_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Z_STEPS_PER_UNIT (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
+   #define DEFAULT_X_MAX_RATE 1000.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 1000.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 1000.0 // mm/min
+@@ -132,7 +133,7 @@
+   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
+   #define DEFAULT_STEPPING_INVERT_MASK 0
+-  #define DEFAULT_DIRECTION_INVERT_MASK ((1<<Y_AXIS)|(1<<Z_AXIS))  
++  #define DEFAULT_DIRECTION_INVERT_MASK ((1<<Y_AXIS)|(1<<Z_AXIS))
+   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 255 // msec (0-254, 255 keeps steppers enabled)
+   #define DEFAULT_STATUS_REPORT_MASK 1 // MPos enabled
+   #define DEFAULT_JUNCTION_DEVIATION 0.02 // mm
+@@ -149,7 +150,7 @@
+   #define DEFAULT_HOMING_FEED_RATE 25.0 // mm/min
+   #define DEFAULT_HOMING_SEEK_RATE 250.0 // mm/min
+   #define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
+-  #define DEFAULT_HOMING_PULLOFF 1.0 // mm  
++  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
+ #endif
+ 
+ #ifdef DEFAULTS_SHAPEOKO_2
+@@ -161,9 +162,9 @@
+   #define MICROSTEPS_Z 2
+   #define STEP_REVS_Z 200
+   #define MM_PER_REV_Z 1.250 // 1.25 mm/rev leadscrew
+-  #define DEFAULT_X_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Y_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Z_STEPS_PER_MM (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
++  #define DEFAULT_X_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Y_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Z_STEPS_PER_UNIT (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
+   #define DEFAULT_X_MAX_RATE 5000.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 5000.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 500.0 // mm/min
+@@ -174,7 +175,7 @@
+   #define DEFAULT_Y_MAX_TRAVEL 290.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
+-  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
++  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
+   #define DEFAULT_STEPPING_INVERT_MASK 0
+   #define DEFAULT_DIRECTION_INVERT_MASK ((1<<X_AXIS)|(1<<Z_AXIS))
+@@ -184,7 +185,7 @@
+   #define DEFAULT_ARC_TOLERANCE 0.002 // mm
+   #define DEFAULT_REPORT_INCHES 0 // false
+   #define DEFAULT_INVERT_ST_ENABLE 0 // false
+-  #define DEFAULT_INVERT_LIMIT_PINS 0 // false  
++  #define DEFAULT_INVERT_LIMIT_PINS 0 // false
+   #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false
+   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
+   #define DEFAULT_INVERT_PROBE_PIN 0 // false
+@@ -194,7 +195,7 @@
+   #define DEFAULT_HOMING_FEED_RATE 25.0 // mm/min
+   #define DEFAULT_HOMING_SEEK_RATE 250.0 // mm/min
+   #define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
+-  #define DEFAULT_HOMING_PULLOFF 1.0 // mm  
++  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
+ #endif
+ 
+ #ifdef DEFAULTS_SHAPEOKO_3
+@@ -205,9 +206,9 @@
+   #define MICROSTEPS_Z 8
+   #define STEP_REVS_Z 200
+   #define MM_PER_REV_Z (2.0*20) // 2mm belt pitch, 20 pulley teeth
+-  #define DEFAULT_X_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Y_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Z_STEPS_PER_MM (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
++  #define DEFAULT_X_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Y_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Z_STEPS_PER_UNIT (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
+   #define DEFAULT_X_MAX_RATE 5000.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 5000.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 5000.0 // mm/min
+@@ -238,7 +239,7 @@
+   #define DEFAULT_HOMING_FEED_RATE 100.0 // mm/min
+   #define DEFAULT_HOMING_SEEK_RATE 1000.0 // mm/min
+   #define DEFAULT_HOMING_DEBOUNCE_DELAY 25 // msec (0-65k)
+-  #define DEFAULT_HOMING_PULLOFF 5.0 // mm  
++  #define DEFAULT_HOMING_PULLOFF 5.0 // mm
+ #endif
+ 
+ #ifdef DEFAULTS_X_CARVE_500MM
+@@ -250,9 +251,9 @@
+   #define MICROSTEPS_Z 2
+   #define STEP_REVS_Z 200
+   #define MM_PER_REV_Z 2.117 // ACME 3/8-12 Leadscrew
+-  #define DEFAULT_X_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Y_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Z_STEPS_PER_MM (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
++  #define DEFAULT_X_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Y_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Z_STEPS_PER_UNIT (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
+   #define DEFAULT_X_MAX_RATE 8000.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 8000.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 500.0 // mm/min
+@@ -263,7 +264,7 @@
+   #define DEFAULT_Y_MAX_TRAVEL 290.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
+-  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
++  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
+   #define DEFAULT_STEPPING_INVERT_MASK 0
+   #define DEFAULT_DIRECTION_INVERT_MASK ((1<<X_AXIS)|(1<<Y_AXIS))
+@@ -283,7 +284,7 @@
+   #define DEFAULT_HOMING_FEED_RATE 25.0 // mm/min
+   #define DEFAULT_HOMING_SEEK_RATE 750.0 // mm/min
+   #define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
+-  #define DEFAULT_HOMING_PULLOFF 1.0 // mm 
++  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
+ #endif
+ 
+ #ifdef DEFAULTS_X_CARVE_1000MM
+@@ -295,9 +296,9 @@
+   #define MICROSTEPS_Z 2
+   #define STEP_REVS_Z 200
+   #define MM_PER_REV_Z 2.117 // ACME 3/8-12 Leadscrew
+-  #define DEFAULT_X_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Y_STEPS_PER_MM (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
+-  #define DEFAULT_Z_STEPS_PER_MM (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
++  #define DEFAULT_X_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Y_STEPS_PER_UNIT (MICROSTEPS_XY*STEP_REVS_XY/MM_PER_REV_XY)
++  #define DEFAULT_Z_STEPS_PER_UNIT (MICROSTEPS_Z*STEP_REVS_Z/MM_PER_REV_Z)
+   #define DEFAULT_X_MAX_RATE 8000.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 8000.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 500.0 // mm/min
+@@ -308,7 +309,7 @@
+   #define DEFAULT_Y_MAX_TRAVEL 790.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
+-  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
++  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
+   #define DEFAULT_STEPPING_INVERT_MASK 0
+   #define DEFAULT_DIRECTION_INVERT_MASK ((1<<X_AXIS)|(1<<Y_AXIS))
+@@ -328,7 +329,7 @@
+   #define DEFAULT_HOMING_FEED_RATE 25.0 // mm/min
+   #define DEFAULT_HOMING_SEEK_RATE 750.0 // mm/min
+   #define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
+-  #define DEFAULT_HOMING_PULLOFF 1.0 // mm 
++  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
+ #endif
+ 
+ #ifdef DEFAULTS_ZEN_TOOLWORKS_7x7
+@@ -338,9 +339,9 @@
+   #define MICROSTEPS 8
+   #define STEPS_PER_REV 200.0
+   #define MM_PER_REV 8.0 // 8 mm/rev leadscrew
+-  #define DEFAULT_X_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+-  #define DEFAULT_Y_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+-  #define DEFAULT_Z_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
++  #define DEFAULT_X_STEPS_PER_UNIT (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
++  #define DEFAULT_Y_STEPS_PER_UNIT (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
++  #define DEFAULT_Z_STEPS_PER_UNIT (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+   #define DEFAULT_X_MAX_RATE 6000.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 6000.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 6000.0 // mm/min
+@@ -351,7 +352,7 @@
+   #define DEFAULT_Y_MAX_TRAVEL 180.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_Z_MAX_TRAVEL 150.0 // mm NOTE: Must be a positive value.
+   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
+-  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
++  #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
+   #define DEFAULT_STEPPING_INVERT_MASK 0
+   #define DEFAULT_DIRECTION_INVERT_MASK ((1<<Y_AXIS))
+@@ -361,7 +362,7 @@
+   #define DEFAULT_ARC_TOLERANCE 0.002 // mm
+   #define DEFAULT_REPORT_INCHES 0 // false
+   #define DEFAULT_INVERT_ST_ENABLE 0 // false
+-  #define DEFAULT_INVERT_LIMIT_PINS 0 // false  
++  #define DEFAULT_INVERT_LIMIT_PINS 0 // false
+   #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false
+   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
+   #define DEFAULT_INVERT_PROBE_PIN 0 // false
+@@ -377,9 +378,9 @@
+ #ifdef DEFAULTS_OXCNC
+   // Grbl settings for OpenBuilds OX CNC Machine
+   // http://www.openbuilds.com/builds/openbuilds-ox-cnc-machine.341/
+-  #define DEFAULT_X_STEPS_PER_MM 26.670
+-  #define DEFAULT_Y_STEPS_PER_MM 26.670
+-  #define DEFAULT_Z_STEPS_PER_MM 50
++  #define DEFAULT_X_STEPS_PER_UNIT 26.670
++  #define DEFAULT_Y_STEPS_PER_UNIT 26.670
++  #define DEFAULT_Z_STEPS_PER_UNIT 50
+   #define DEFAULT_X_MAX_RATE 500.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 500.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 500.0 // mm/min
+@@ -416,9 +417,9 @@
+ #ifdef DEFAULTS_SIMULATOR
+   // Settings only for Grbl Simulator (www.github.com/grbl/grbl-sim)
+   // Grbl generic default settings. Should work across different machines.
+-  #define DEFAULT_X_STEPS_PER_MM 1000.0
+-  #define DEFAULT_Y_STEPS_PER_MM 1000.0
+-  #define DEFAULT_Z_STEPS_PER_MM 1000.0
++  #define DEFAULT_X_STEPS_PER_UNIT 1000.0
++  #define DEFAULT_Y_STEPS_PER_UNIT 1000.0
++  #define DEFAULT_Z_STEPS_PER_UNIT 1000.0
+   #define DEFAULT_X_MAX_RATE 1000.0 // mm/min
+   #define DEFAULT_Y_MAX_RATE 1000.0 // mm/min
+   #define DEFAULT_Z_MAX_RATE 1000.0 // mm/min
+@@ -453,18 +454,30 @@
+ #endif
+ 
+ #ifdef DEFAULTS_RAMPS_BOARD
+-  #define DEFAULT_X_STEPS_PER_MM 80
+-  #define DEFAULT_Y_STEPS_PER_MM 80
+-  #define DEFAULT_Z_STEPS_PER_MM 4000
+-  #define DEFAULT_X_MAX_RATE 18000.0 // mm/min
+-  #define DEFAULT_Y_MAX_RATE 18000.0 // mm/min
+-  #define DEFAULT_Z_MAX_RATE 300.0 // mm/min
+-  #define DEFAULT_X_ACCELERATION 3000 
+-  #define DEFAULT_Y_ACCELERATION 3000
+-  #define DEFAULT_Z_ACCELERATION 100
++  #define DEFAULT_X_STEPS_PER_UNIT 80
++  #define DEFAULT_Y_STEPS_PER_UNIT 80
++  #define DEFAULT_Z_STEPS_PER_UNIT 4000
++  #define DEFAULT_X_MAX_RATE 9000.0 // 9000 mm/min = 9000/60 = 150 mm/sec
++  #define DEFAULT_Y_MAX_RATE 9000.0 // 9000 mm/min = 9000/60 = 150 mm/sec
++  #define DEFAULT_Z_MAX_RATE 300.0  //  300 mm/min =  300/60 =   5 mm/sec
++  #define DEFAULT_X_ACCELERATION (300.0*60*60) // 300*60*60 mm/min^2 = 300 mm/sec^2
++  #define DEFAULT_Y_ACCELERATION (300.0*60*60) // 300*60*60 mm/min^2 = 300 mm/sec^2
++  #define DEFAULT_Z_ACCELERATION (100.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
+   #define DEFAULT_X_MAX_TRAVEL 200.0 // mm
+   #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm
+   #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm
++  #if N_AXIS > 3
++    #define DEFAULT_A_STEPS_PER_UNIT 8.888889 // Direct drive : (200 pas par tours * 1/16 microsteps)/360°
++    #define DEFAULT_A_MAX_RATE 1440 // °/mn
++    #define DEFAULT_A_ACCELERATION (100.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
++    #define DEFAULT_A_MAX_TRAVEL 360.0 // °
++  #endif
++  #if N_AXIS > 4
++    #define DEFAULT_B_STEPS_PER_UNIT 8.888889 // Direct drive : (200 pas par tours * 1/16 microsteps)/360°
++    #define DEFAULT_B_MAX_RATE 1440 // °/mn
++    #define DEFAULT_B_ACCELERATION (100.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
++    #define DEFAULT_B_MAX_TRAVEL 180.0 // °
++  #endif
+   #define DEFAULT_SPINDLE_RPM_MAX 1000.0 // rpm
+   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
+   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
+@@ -489,4 +502,4 @@
+   #define DEFAULT_HOMING_PULLOFF 5.0 // mm
+ #endif
+ 
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/grbl/gcode.c b/grbl/gcode.c
+old mode 100644
+new mode 100755
+index 3b32370..3045df3
+--- a/grbl/gcode.c
++++ b/grbl/gcode.c
+@@ -2,6 +2,7 @@
+   gcode.c - rs274/ngc parser.
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -156,7 +157,7 @@ uint8_t gc_execute_line(char *line)
+               if (!((mantissa == 0) || (mantissa == 10))) { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); }
+               gc_block.non_modal_command += mantissa;
+               mantissa = 0; // Set to zero to indicate valid non-integer G command.
+-            }                
++            }
+             break;
+           case 0: case 1: case 2: case 3: case 38:
+             // Check for G0/1/2/3/38 being called with G10/28/30/92 on same block.
+@@ -173,7 +174,7 @@ uint8_t gc_execute_line(char *line)
+               }
+               gc_block.modal.motion += (mantissa/10)+100;
+               mantissa = 0; // Set to zero to indicate valid non-integer G command.
+-            }  
++            }
+             break;
+           case 17: case 18: case 19:
+             word_bit = MODAL_GROUP_G2;
+@@ -257,10 +258,10 @@ uint8_t gc_execute_line(char *line)
+               case 4: gc_block.modal.spindle = SPINDLE_ENABLE_CCW; break;
+               case 5: gc_block.modal.spindle = SPINDLE_DISABLE; break;
+             }
+-            break;            
++            break;
+           case 7: case 8: case 9:
+-            word_bit = MODAL_GROUP_M8; 
+-            switch(int_value) {      
++            word_bit = MODAL_GROUP_M8;
++            switch(int_value) {
+               case 7: gc_block.modal.coolant = COOLANT_MIST_ENABLE; break;
+               case 8: gc_block.modal.coolant = COOLANT_FLOOD_ENABLE; break;
+               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
+@@ -288,9 +289,15 @@ uint8_t gc_execute_line(char *line)
+            legal g-code words and stores their value. Error-checking is performed later since some
+            words (I,J,K,L,P,R) have multiple connotations and/or depend on the issued commands. */
+         switch(letter){
+-          // case 'A': // Not supported
+-          // case 'B': // Not supported
+-          // case 'C': // Not supported
++          // case 'A', 'B' or 'C' depending of AXIS_4_NAME and AXIS_5_NAME supported in 4 or 5 axes mode
++          #if N_AXIS > 3
++            #ifdef AXIS_4
++              case AXIS_4_NAME: word_bit = WORD_A; gc_block.values.xyz[AXIS_4] = value; axis_words |= (1<<AXIS_4); break;
++            #endif
++            #ifdef AXIS_5
++              case AXIS_5_NAME: word_bit = WORD_B; gc_block.values.xyz[AXIS_5] = value; axis_words |= (1<<AXIS_5); break;
++            #endif
++          #endif
+           // case 'D': // Not supported
+           case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
+           // case 'H': // Not supported
+@@ -304,10 +311,10 @@ uint8_t gc_execute_line(char *line)
+           // case 'Q': // Not supported
+           case 'R': word_bit = WORD_R; gc_block.values.r = value; break;
+           case 'S': word_bit = WORD_S; gc_block.values.s = value; break;
+-          case 'T': word_bit = WORD_T; 
+-						if (value > MAX_TOOL_NUMBER) { FAIL(STATUS_GCODE_MAX_VALUE_EXCEEDED); }
+-						gc_block.values.t = int_value;
+-						break;
++          case 'T': word_bit = WORD_T;
++            if (value > MAX_TOOL_NUMBER) { FAIL(STATUS_GCODE_MAX_VALUE_EXCEEDED); }
++            gc_block.values.t = int_value;
++            break;
+           case 'X': word_bit = WORD_X; gc_block.values.xyz[X_AXIS] = value; axis_words |= (1<<X_AXIS); break;
+           case 'Y': word_bit = WORD_Y; gc_block.values.xyz[Y_AXIS] = value; axis_words |= (1<<Y_AXIS); break;
+           case 'Z': word_bit = WORD_Z; gc_block.values.xyz[Z_AXIS] = value; axis_words |= (1<<Z_AXIS); break;
+@@ -465,7 +472,11 @@ uint8_t gc_execute_line(char *line)
+   // Pre-convert XYZ coordinate values to millimeters, if applicable.
+   uint8_t idx;
+   if (gc_block.modal.units == UNITS_MODE_INCHES) {
+-    for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used.
++    #if N_AXIS > 3
++      for (idx=0; idx<N_AXIS_LINEAR; idx++) { // Axes indices are consistent, so loop may be used.
++    #else
++      for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used.
++    #endif
+       if (bit_istrue(axis_words,bit(idx)) ) {
+         gc_block.values.xyz[idx] *= MM_PER_INCH;
+       }
+@@ -530,7 +541,7 @@ uint8_t gc_execute_line(char *line)
+       // Determine coordinate system to change and try to load from EEPROM.
+       if (coord_select > 0) { coord_select--; } // Adjust P1-P6 index to EEPROM coordinate data indexing.
+       else { coord_select = gc_block.modal.coord_select; } // Index P0 as the active coordinate system
+-      
++
+       // NOTE: Store parameter data in IJK values. By rule, they are not in use with this command.
+       if (!settings_read_coord_data(coord_select,gc_block.values.ijk)) { FAIL(STATUS_SETTING_READ_FAIL); } // [EEPROM read fail]
+ 
+@@ -661,7 +672,7 @@ uint8_t gc_execute_line(char *line)
+           // Axis words are optional. If missing, set axis command flag to ignore execution.
+           if (!axis_words) { axis_command = AXIS_COMMAND_NONE; }
+           break;
+-        case MOTION_MODE_CW_ARC: 
++        case MOTION_MODE_CW_ARC:
+           gc_parser_flags |= GC_PARSER_ARC_IS_CLOCKWISE; // No break intentional.
+         case MOTION_MODE_CCW_ARC:
+           // [G2/3 Errors All-Modes]: Feed rate undefined.
+@@ -777,7 +788,11 @@ uint8_t gc_execute_line(char *line)
+ 
+             // Convert IJK values to proper units.
+             if (gc_block.modal.units == UNITS_MODE_INCHES) {
+-              for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used to save flash space.
++              #if N_AXIS > 3
++                for (idx=0; idx<N_AXIS_LINEAR; idx++) { // Axes indices are consistent, so loop may be used to save flash space.
++              # else
++                for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used to save flash space.
++              #endif
+                 if (ijk_words & bit(idx)) { gc_block.values.ijk[idx] *= MM_PER_INCH; }
+               }
+             }
+@@ -801,7 +816,7 @@ uint8_t gc_execute_line(char *line)
+         case MOTION_MODE_PROBE_TOWARD_NO_ERROR: case MOTION_MODE_PROBE_AWAY_NO_ERROR:
+           gc_parser_flags |= GC_PARSER_PROBE_IS_NO_ERROR; // No break intentional.
+         case MOTION_MODE_PROBE_TOWARD: case MOTION_MODE_PROBE_AWAY:
+-          if ((gc_block.modal.motion == MOTION_MODE_PROBE_AWAY) || 
++          if ((gc_block.modal.motion == MOTION_MODE_PROBE_AWAY) ||
+               (gc_block.modal.motion == MOTION_MODE_PROBE_AWAY_NO_ERROR)) { gc_parser_flags |= GC_PARSER_PROBE_IS_AWAY; }
+           // [G38 Errors]: Target is same current. No axis words. Cutter compensation is enabled. Feed rate
+           //   is undefined. Probe is triggered. NOTE: Probe check moved to probe cycle. Instead of returning
+@@ -824,7 +839,11 @@ uint8_t gc_execute_line(char *line)
+   } else {
+     bit_false(value_words,(bit(WORD_N)|bit(WORD_F)|bit(WORD_S)|bit(WORD_T))); // Remove single-meaning value words.
+   }
++#if N_AXIS > 3
++  if (axis_command) { bit_false(value_words,(bit(WORD_X)|bit(WORD_Y)|bit(WORD_Z)|bit(WORD_A)|bit(WORD_B))); } // Remove axis words.
++#else
+   if (axis_command) { bit_false(value_words,(bit(WORD_X)|bit(WORD_Y)|bit(WORD_Z))); } // Remove axis words.
++#endif
+   if (value_words) { FAIL(STATUS_GCODE_UNUSED_WORDS); } // [Unused words]
+ 
+   /* -------------------------------------------------------------------------------------
+@@ -856,34 +875,34 @@ uint8_t gc_execute_line(char *line)
+     if (status == STATUS_OK) { memcpy(gc_state.position, gc_block.values.xyz, sizeof(gc_block.values.xyz)); }
+     return(status);
+   }
+-  
++
+   // If in laser mode, setup laser power based on current and past parser conditions.
+   if (bit_istrue(settings.flags,BITFLAG_LASER_MODE)) {
+-    if ( !((gc_block.modal.motion == MOTION_MODE_LINEAR) || (gc_block.modal.motion == MOTION_MODE_CW_ARC) 
++    if ( !((gc_block.modal.motion == MOTION_MODE_LINEAR) || (gc_block.modal.motion == MOTION_MODE_CW_ARC)
+         || (gc_block.modal.motion == MOTION_MODE_CCW_ARC)) ) {
+       gc_parser_flags |= GC_PARSER_LASER_DISABLE;
+     }
+ 
+-    // Any motion mode with axis words is allowed to be passed from a spindle speed update. 
++    // Any motion mode with axis words is allowed to be passed from a spindle speed update.
+     // NOTE: G1 and G0 without axis words sets axis_command to none. G28/30 are intentionally omitted.
+     // TODO: Check sync conditions for M3 enabled motions that don't enter the planner. (zero length).
+-    if (axis_words && (axis_command == AXIS_COMMAND_MOTION_MODE)) { 
+-      gc_parser_flags |= GC_PARSER_LASER_ISMOTION; 
++    if (axis_words && (axis_command == AXIS_COMMAND_MOTION_MODE)) {
++      gc_parser_flags |= GC_PARSER_LASER_ISMOTION;
+     } else {
+       // M3 constant power laser requires planner syncs to update the laser when changing between
+       // a G1/2/3 motion mode state and vice versa when there is no motion in the line.
+       if (gc_state.modal.spindle == SPINDLE_ENABLE_CW) {
+-        if ((gc_state.modal.motion == MOTION_MODE_LINEAR) || (gc_state.modal.motion == MOTION_MODE_CW_ARC) 
++        if ((gc_state.modal.motion == MOTION_MODE_LINEAR) || (gc_state.modal.motion == MOTION_MODE_CW_ARC)
+             || (gc_state.modal.motion == MOTION_MODE_CCW_ARC)) {
+-          if (bit_istrue(gc_parser_flags,GC_PARSER_LASER_DISABLE)) { 
++          if (bit_istrue(gc_parser_flags,GC_PARSER_LASER_DISABLE)) {
+             gc_parser_flags |= GC_PARSER_LASER_FORCE_SYNC; // Change from G1/2/3 motion mode.
+           }
+         } else {
+           // When changing to a G1 motion mode without axis words from a non-G1/2/3 motion mode.
+-          if (bit_isfalse(gc_parser_flags,GC_PARSER_LASER_DISABLE)) { 
++          if (bit_isfalse(gc_parser_flags,GC_PARSER_LASER_DISABLE)) {
+             gc_parser_flags |= GC_PARSER_LASER_FORCE_SYNC;
+           }
+-        } 
++        }
+       }
+     }
+   }
+@@ -905,7 +924,7 @@ uint8_t gc_execute_line(char *line)
+ 
+   // [4. Set spindle speed ]:
+   if ((gc_state.spindle_speed != gc_block.values.s) || bit_istrue(gc_parser_flags,GC_PARSER_LASER_FORCE_SYNC)) {
+-    if (gc_state.modal.spindle != SPINDLE_DISABLE) { 
++    if (gc_state.modal.spindle != SPINDLE_DISABLE) {
+       if (bit_isfalse(gc_parser_flags,GC_PARSER_LASER_ISMOTION)) {
+         if (bit_istrue(gc_parser_flags,GC_PARSER_LASER_DISABLE)) {
+            spindle_sync(gc_state.modal.spindle, 0.0);
+@@ -916,9 +935,9 @@ uint8_t gc_execute_line(char *line)
+   }
+   // NOTE: Pass zero spindle speed for all restricted laser motions.
+   if (bit_isfalse(gc_parser_flags,GC_PARSER_LASER_DISABLE)) {
+-    pl_data->spindle_speed = gc_state.spindle_speed; // Record data for planner use. 
++    pl_data->spindle_speed = gc_state.spindle_speed; // Record data for planner use.
+   } // else { pl_data->spindle_speed = 0.0; } // Initialized as zero already.
+-  
++
+   // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
+   gc_state.tool = gc_block.values.t;
+ 
+@@ -1051,8 +1070,8 @@ uint8_t gc_execute_line(char *line)
+           pl_data->condition |= PL_COND_FLAG_NO_FEED_OVERRIDE;
+         #endif
+         gc_update_pos = mc_probe_cycle(gc_block.values.xyz, pl_data, gc_parser_flags);
+-      }  
+-     
++      }
++
+       // As far as the parser is concerned, the position is now == target. In reality the
+       // motion control system might still be processing the action and the real tool position
+       // in any intermediate location.
+@@ -1061,7 +1080,7 @@ uint8_t gc_execute_line(char *line)
+       } else if (gc_update_pos == GC_UPDATE_POS_SYSTEM) {
+         gc_sync_position(); // gc_state.position[] = sys_position
+       } // == GC_UPDATE_POS_NONE
+-    }     
++    }
+   }
+ 
+   // [21. Program flow ]:
+@@ -1125,7 +1144,7 @@ uint8_t gc_execute_line(char *line)
+ 
+   - Canned cycles
+   - Tool radius compensation
+-  - A,B,C-axes
++  - A,B,C-axes // A & B Supported in Ramps 1.4 grbl-Mega-5X version if N_AXIS > 3
+   - Evaluation of expressions
+   - Variables
+   - Override control (TBD)
+diff --git a/grbl/gcode.h b/grbl/gcode.h
+old mode 100644
+new mode 100755
+index 6cdc61b..4803fd3
+--- a/grbl/gcode.h
++++ b/grbl/gcode.h
+@@ -2,6 +2,7 @@
+   gcode.h - rs274/ngc parser.
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -149,7 +150,10 @@
+ #define WORD_X  10
+ #define WORD_Y  11
+ #define WORD_Z  12
+-
++#if N_AXIS > 3
++  #define WORD_A 13
++  #define WORD_B 14
++#endif
+ // Define g-code parser position updating flags
+ #define GC_UPDATE_POS_TARGET   0 // Must be zero
+ #define GC_UPDATE_POS_SYSTEM   1
+@@ -198,7 +202,11 @@ typedef struct {
+ 
+ typedef struct {
+   float f;         // Feed
++#if N_AXIS > 3
++  float ijk[N_AXIS];    // axes offsets for XYZ & AB(C)
++#else
+   float ijk[3];    // I,J,K Axis arc offsets
++#endif
+   uint8_t l;       // G10 or canned cycles parameters
+   int32_t n;       // Line number
+   float p;         // G10 or dwell parameters
+@@ -206,7 +214,11 @@ typedef struct {
+   float r;         // Arc radius
+   float s;         // Spindle speed
+   uint8_t t;       // Tool selection
++#if N_AXIS > 3
++  float xyz[N_AXIS];    // X,Y,Z Translational axes & A,B,(C)
++#else
+   float xyz[3];    // X,Y,Z Translational axes
++#endif
+ } gc_values_t;
+ 
+ 
+diff --git a/grbl/grbl.h b/grbl/grbl.h
+index fc8b888..595d264 100644
+--- a/grbl/grbl.h
++++ b/grbl/grbl.h
+@@ -2,6 +2,7 @@
+   grbl.h - main Grbl include file
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2015-2016 Sungeun K. Jeon for Gnea Research LLC
+ 
+   Grbl is free software: you can redistribute it and/or modify
+@@ -22,8 +23,8 @@
+ #define grbl_h
+ 
+ // Grbl versioning system
+-#define GRBL_VERSION "1.1f"
+-#define GRBL_VERSION_BUILD "20170802"
++#define GRBL_VERSION "1.1g"
++#define GRBL_VERSION_BUILD "20180423"
+ 
+ // Define standard libraries used by Grbl.
+ #include <avr/io.h>
+-----------------------------------------------------------------------------HERE--------------------
+ diff --git a/grbl/limits.c b/grbl/limits.c
+index ebe5405..1f42304 100644
+--- a/grbl/limits.c
++++ b/grbl/limits.c
+@@ -2,9 +2,10 @@
+   limits.c - code pertaining to limit-switches and performing the homing cycle
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+-  
++
+   Grbl is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+@@ -18,7 +19,7 @@
+   You should have received a copy of the GNU General Public License
+   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
+ */
+-  
++
+ #include "grbl.h"
+ 
+ 
+@@ -37,24 +38,60 @@ void limits_init()
+     MIN_LIMIT_DDR(0) &= ~(1<<MIN_LIMIT_BIT(0));
+     MIN_LIMIT_DDR(1) &= ~(1<<MIN_LIMIT_BIT(1));
+     MIN_LIMIT_DDR(2) &= ~(1<<MIN_LIMIT_BIT(2));
++    #if N_AXIS > 3
++    MIN_LIMIT_DDR(3) &= ~(1<<MIN_LIMIT_BIT(3));
++    #endif
++    #if N_AXIS > 4
++    MIN_LIMIT_DDR(4) &= ~(1<<MIN_LIMIT_BIT(4));
++    #endif
+     MAX_LIMIT_DDR(0) &= ~(1<<MAX_LIMIT_BIT(0));
+     MAX_LIMIT_DDR(1) &= ~(1<<MAX_LIMIT_BIT(1));
+     MAX_LIMIT_DDR(2) &= ~(1<<MAX_LIMIT_BIT(2));
++    #if N_AXIS > 3
++    MAX_LIMIT_DDR(3) &= ~(1<<MAX_LIMIT_BIT(3));
++    #endif
++    #if N_AXIS > 4
++    MAX_LIMIT_DDR(4) &= ~(1<<MAX_LIMIT_BIT(4));
++    #endif
+ 
+     #ifdef DISABLE_LIMIT_PIN_PULL_UP
+       MIN_LIMIT_PORT(0) &= ~(1<<MIN_LIMIT_BIT(0)); // Normal low operation. Requires external pull-down.
+       MIN_LIMIT_PORT(1) &= ~(1<<MIN_LIMIT_BIT(1)); // Normal low operation. Requires external pull-down.
+       MIN_LIMIT_PORT(2) &= ~(1<<MIN_LIMIT_BIT(2)); // Normal low operation. Requires external pull-down.
++      #if N_AXIS > 3
++        MIN_LIMIT_PORT(3) &= ~(1<<MIN_LIMIT_BIT(3)); // Normal low operation. Requires external pull-down.
++      #endif
++      #if N_AXIS > 4
++        MIN_LIMIT_PORT(4) &= ~(1<<MIN_LIMIT_BIT(4)); // Normal low operation. Requires external pull-down.
++      #endif
+       MAX_LIMIT_PORT(0) &= ~(1<<MAX_LIMIT_BIT(0)); // Normal low operation. Requires external pull-down.
+       MAX_LIMIT_PORT(1) &= ~(1<<MAX_LIMIT_BIT(1)); // Normal low operation. Requires external pull-down.
+       MAX_LIMIT_PORT(2) &= ~(1<<MAX_LIMIT_BIT(2)); // Normal low operation. Requires external pull-down.
++      #if N_AXIS > 3
++        MAX_LIMIT_PORT(3) &= ~(1<<MAX_LIMIT_BIT(3)); // Normal low operation. Requires external pull-down.
++      #endif
++      #if N_AXIS > 4
++        MAX_LIMIT_PORT(4) &= ~(1<<MAX_LIMIT_BIT(4)); // Normal low operation. Requires external pull-down.
++      #endif
+     #else
+       MIN_LIMIT_PORT(0) |= (1<<MIN_LIMIT_BIT(0));  // Enable internal pull-up resistors. Normal high operation.
+       MIN_LIMIT_PORT(1) |= (1<<MIN_LIMIT_BIT(1));  // Enable internal pull-up resistors. Normal high operation.
+       MIN_LIMIT_PORT(2) |= (1<<MIN_LIMIT_BIT(2));  // Enable internal pull-up resistors. Normal high operation.
++      #if N_AXIS > 3
++        MIN_LIMIT_PORT(3) |= (1<<MIN_LIMIT_BIT(3));  // Enable internal pull-up resistors. Normal high operation.
++      #endif
++      #if N_AXIS > 4
++        MIN_LIMIT_PORT(4) |= (1<<MIN_LIMIT_BIT(4));  // Enable internal pull-up resistors. Normal high operation.
++      #endif
+       MAX_LIMIT_PORT(0) |= (1<<MAX_LIMIT_BIT(0));  // Enable internal pull-up resistors. Normal high operation.
+       MAX_LIMIT_PORT(1) |= (1<<MAX_LIMIT_BIT(1));  // Enable internal pull-up resistors. Normal high operation.
+       MAX_LIMIT_PORT(2) |= (1<<MAX_LIMIT_BIT(2));  // Enable internal pull-up resistors. Normal high operation.
++      #if N_AXIS > 3
++        MAX_LIMIT_PORT(3) |= (1<<MAX_LIMIT_BIT(3));  // Enable internal pull-up resistors. Normal high operation.
++      #endif
++      #if N_AXIS > 4
++        MAX_LIMIT_PORT(4) |= (1<<MAX_LIMIT_BIT(4));  // Enable internal pull-up resistors. Normal high operation.
++      #endif
+     #endif
+     #ifndef DISABLE_HW_LIMITS
+       if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
+@@ -84,7 +121,7 @@ void limits_init()
+     } else {
+       limits_disable();
+     }
+-  
++
+     #ifdef ENABLE_SOFTWARE_DEBOUNCE
+       MCUSR &= ~(1<<WDRF);
+       WDTCSR |= (1<<WDCE) | (1<<WDE);
+@@ -107,14 +144,26 @@ void limits_disable()
+     PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt
+   #endif // DEFAULTS_RAMPS_BOARD
+ }
+-#ifdef DEFAULTS_RAMPS_BOARD  
+-  static volatile uint8_t * const max_limit_pins[N_AXIS] = {&MAX_LIMIT_PIN(0), &MAX_LIMIT_PIN(1), &MAX_LIMIT_PIN(2)};
+-  static volatile uint8_t * const min_limit_pins[N_AXIS] = {&MIN_LIMIT_PIN(0), &MIN_LIMIT_PIN(1), &MIN_LIMIT_PIN(2)};
+-  static const uint8_t max_limit_bits[N_AXIS] = {MAX_LIMIT_BIT(0), MAX_LIMIT_BIT(1), MAX_LIMIT_BIT(2)};
+-  static const uint8_t min_limit_bits[N_AXIS] = {MIN_LIMIT_BIT(0), MIN_LIMIT_BIT(1), MIN_LIMIT_BIT(2)};
++#ifdef DEFAULTS_RAMPS_BOARD
++  #if N_AXIS == 4
++    static volatile uint8_t * const max_limit_pins[N_AXIS] = {&MAX_LIMIT_PIN(0), &MAX_LIMIT_PIN(1), &MAX_LIMIT_PIN(2), &MAX_LIMIT_PIN(3)};
++    static volatile uint8_t * const min_limit_pins[N_AXIS] = {&MIN_LIMIT_PIN(0), &MIN_LIMIT_PIN(1), &MIN_LIMIT_PIN(2), &MIN_LIMIT_PIN(3)};
++    static const uint8_t max_limit_bits[N_AXIS] = {MAX_LIMIT_BIT(0), MAX_LIMIT_BIT(1), MAX_LIMIT_BIT(2), MAX_LIMIT_BIT(3)};
++    static const uint8_t min_limit_bits[N_AXIS] = {MIN_LIMIT_BIT(0), MIN_LIMIT_BIT(1), MIN_LIMIT_BIT(2), MIN_LIMIT_BIT(3)};
++  #elif N_AXIS == 5
++    static volatile uint8_t * const max_limit_pins[N_AXIS] = {&MAX_LIMIT_PIN(0), &MAX_LIMIT_PIN(1), &MAX_LIMIT_PIN(2), &MAX_LIMIT_PIN(3), &MAX_LIMIT_PIN(4)};
++    static volatile uint8_t * const min_limit_pins[N_AXIS] = {&MIN_LIMIT_PIN(0), &MIN_LIMIT_PIN(1), &MIN_LIMIT_PIN(2), &MIN_LIMIT_PIN(3), &MIN_LIMIT_PIN(4)};
++    static const uint8_t max_limit_bits[N_AXIS] = {MAX_LIMIT_BIT(0), MAX_LIMIT_BIT(1), MAX_LIMIT_BIT(2), MAX_LIMIT_BIT(3), MAX_LIMIT_BIT(4)};
++    static const uint8_t min_limit_bits[N_AXIS] = {MIN_LIMIT_BIT(0), MIN_LIMIT_BIT(1), MIN_LIMIT_BIT(2), MIN_LIMIT_BIT(3), MIN_LIMIT_BIT(4)};
++  #else
++    static volatile uint8_t * const max_limit_pins[N_AXIS] = {&MAX_LIMIT_PIN(0), &MAX_LIMIT_PIN(1), &MAX_LIMIT_PIN(2)};
++    static volatile uint8_t * const min_limit_pins[N_AXIS] = {&MIN_LIMIT_PIN(0), &MIN_LIMIT_PIN(1), &MIN_LIMIT_PIN(2)};
++    static const uint8_t max_limit_bits[N_AXIS] = {MAX_LIMIT_BIT(0), MAX_LIMIT_BIT(1), MAX_LIMIT_BIT(2)};
++    static const uint8_t min_limit_bits[N_AXIS] = {MIN_LIMIT_BIT(0), MIN_LIMIT_BIT(1), MIN_LIMIT_BIT(2)};
++  #endif
+ #endif // DEFAULTS_RAMPS_BOARD
+ 
+-// Returns limit state as a bit-wise uint8 variable. Each bit indicates an axis limit, where 
++// Returns limit state as a bit-wise uint8 variable. Each bit indicates an axis limit, where
+ // triggered is 1 and not triggered is 0. Invert mask is applied. Axes are defined by their
+ // number in bit position, i.e. Z_AXIS is (1<<2) or bit 2, and Y_AXIS is (1<<1) or bit 1.
+ uint8_t limits_get_state()
+@@ -143,7 +192,7 @@ uint8_t limits_get_state()
+       #endif
+       if (pin)
+         limit_state |= (1 << idx);
+-    } 
++    }
+     return(limit_state);
+   #else
+     uint8_t pin = (LIMIT_PIN & LIMIT_MASK);
+@@ -151,7 +200,7 @@ uint8_t limits_get_state()
+       pin ^= INVERT_LIMIT_PIN_MASK;
+     #endif
+     if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
+-    if (pin) {  
++    if (pin) {
+       uint8_t idx;
+       for (idx=0; idx<N_AXIS; idx++) {
+         if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
+@@ -166,29 +215,29 @@ uint8_t limits_get_state()
+     #error "HW limits are not implemented"
+   #endif
+ #else
+-// This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing 
++// This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing
+ // limit switch can cause a lot of problems, like false readings and multiple interrupt calls.
+ // If a switch is triggered at all, something bad has happened and treat it as such, regardless
+ // if a limit switch is being disengaged. It's impossible to reliably tell the state of a
+ // bouncing pin because the Arduino microcontroller does not retain any state information when
+-// detecting a pin change. If we poll the pins in the ISR, you can miss the correct reading if the 
++// detecting a pin change. If we poll the pins in the ISR, you can miss the correct reading if the
+ // switch is bouncing.
+ // NOTE: Do not attach an e-stop to the limit pins, because this interrupt is disabled during
+ // homing cycles and will not respond correctly. Upon user request or need, there may be a
+ // special pinout for an e-stop, but it is generally recommended to just directly connect
+ // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
+   #ifndef ENABLE_SOFTWARE_DEBOUNCE
+-    ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process. 
++    ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
+     {
+       // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
+-      // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
+-      // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
++      // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
++      // moves in the planner and serial buffers are all cleared and newly sent blocks will be
+       // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
+       // limit setting if their limits are constantly triggering after a reset and move their axes.
+-      if (sys.state != STATE_ALARM) { 
++      if (sys.state != STATE_ALARM) {
+         if (!(sys_rt_exec_alarm)) {
+           #ifdef HARD_LIMIT_FORCE_STATE_CHECK
+-            // Check limit pin state. 
++            // Check limit pin state.
+             if (limits_get_state()) {
+               mc_reset(); // Initiate system kill.
+               system_set_exec_alarm(EXEC_ALARM_HARD_LIMIT); // Indicate hard limit critical event
+@@ -199,21 +248,21 @@ uint8_t limits_get_state()
+           #endif
+         }
+       }
+-    }  
++    }
+   #else // OPTIONAL: Software debounce limit pin routine.
+-    // Upon limit pin change, enable watchdog timer to create a short delay. 
++    // Upon limit pin change, enable watchdog timer to create a short delay.
+     ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
+     ISR(WDT_vect) // Watchdog timer ISR
+     {
+-      WDTCSR &= ~(1<<WDIE); // Disable watchdog timer. 
+-      if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. 
++      WDTCSR &= ~(1<<WDIE); // Disable watchdog timer.
++      if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state.
+         if (!(sys_rt_exec_alarm)) {
+-          // Check limit pin state. 
++          // Check limit pin state.
+           if (limits_get_state()) {
+             mc_reset(); // Initiate system kill.
+             system_set_exec_alarm(EXEC_ALARM_HARD_LIMIT); // Indicate hard limit critical event
+           }
+-        }  
++        }
+       }
+     }
+   #endif
+@@ -224,18 +273,18 @@ uint8_t limits_get_state()
+   {
+     uint8_t res = 0;
+     uint8_t idx;
+- 
++
+     for (idx = 0; idx < N_AXIS; idx++)
+       if (axislock[idx]) {
+         res = 1;
+         break;
+       }
+- 
++
+     return res;
+   }
+ #endif // DEFAULTS_RAMPS_BOARD
+ 
+- 
++
+ // Homes the specified cycle axes, sets the machine position, and performs a pull-off motion after
+ // completing. Homing is a special motion case, which involves rapid uncontrolled stops to locate
+ // the trigger point of the limit switches. The rapid stops are handled by a system level axis lock
+@@ -320,7 +369,7 @@ void limits_go_home(uint8_t cycle_mask)
+ 
+       }
+       homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
+-      
++
+ 
+       // Perform homing cycle. Planner buffer should be empty, as required to initiate the homing cycle.
+       pl_data->feed_rate = homing_rate; // Set current homing rate.
+@@ -338,6 +387,12 @@ void limits_go_home(uint8_t cycle_mask)
+               if (limit_state & (1 << idx)) {
+                 #ifdef COREXY
+                   if (idx==Z_AXIS) { axislock[idx] &= ~(step_pin[Z_AXIS]); }
++                  #if N_AXIS > 3
++                    else if (idx==AXIS_4) { axislock[idx] &= ~(step_pin[AXIS_4]); }
++                  #endif
++                  #if N_AXIS > 4
++                    else if (idx==AXIS_5) { axislock[idx] &= ~(step_pin[AXIS_5]); }
++                  #endif
+                   else { axislock[idx] &= ~(step_pin[A_MOTOR]|step_pin[B_MOTOR]); }
+                 #else
+                   axislock[idx] &= ~(step_pin[idx]);
+@@ -410,7 +465,11 @@ void limits_go_home(uint8_t cycle_mask)
+               int32_t axis_position = system_convert_corexy_to_x_axis_steps(sys_position);
+               sys_position[A_MOTOR] = sys_position[B_MOTOR] = axis_position;
+             } else {
++            #if N_AXIS > 3
++              sys_position[idx] = 0;
++            #else
+               sys_position[Z_AXIS] = 0;
++            #endif
+             }
+           #else
+             sys_position[idx] = 0;
+@@ -448,6 +507,12 @@ void limits_go_home(uint8_t cycle_mask)
+               if (limit_state & (1 << idx)) {
+                 #ifdef COREXY
+                   if (idx==Z_AXIS) { axislock &= ~(step_pin[Z_AXIS]); }
++                  #if N_AXIS > 3
++                    else if (idx==AXIS_4) { axislock &= ~(step_pin[AXIS_4]); }
++                  #endif
++                  #if N_AXIS > 4
++                    else if (idx==AXIS_5) { axislock &= ~(step_pin[AXIS_5]); }
++                  #endif
+                   else { axislock &= ~(step_pin[A_MOTOR]|step_pin[B_MOTOR]); }
+                 #else
+                   axislock &= ~(step_pin[idx]);
+diff --git a/grbl/motion_control.c b/grbl/motion_control.c
+old mode 100644
+new mode 100755
+index 6e11e35..27982bf
+--- a/grbl/motion_control.c
++++ b/grbl/motion_control.c
+@@ -2,6 +2,7 @@
+   motion_control.c - high level interface for issuing motion commands
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -113,13 +114,19 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
+     // Multiply inverse feed_rate to compensate for the fact that this movement is approximated
+     // by a number of discrete segments. The inverse feed_rate should be correct for the sum of
+     // all segments.
+-    if (pl_data->condition & PL_COND_FLAG_INVERSE_TIME) { 
+-      pl_data->feed_rate *= segments; 
++    if (pl_data->condition & PL_COND_FLAG_INVERSE_TIME) {
++      pl_data->feed_rate *= segments;
+       bit_false(pl_data->condition,PL_COND_FLAG_INVERSE_TIME); // Force as feed absolute mode over arc segments.
+     }
+-    
++
+     float theta_per_segment = angular_travel/segments;
+     float linear_per_segment = (target[axis_linear] - position[axis_linear])/segments;
++    #if N_AXIS >3
++      float axis_a_per_segment = (target[AXIS_4] - position[AXIS_4])/segments;
++    #endif
++    #if N_AXIS >4
++      float axis_b_per_segment = (target[AXIS_5] - position[AXIS_5])/segments;
++    #endif
+ 
+     /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
+        and phi is the angle of rotation. Solution approach by Jens Geisler.
+@@ -180,6 +187,12 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
+       position[axis_1] = center_axis1 + r_axis1;
+       position[axis_linear] += linear_per_segment;
+ 
++      #if N_AXIS > 3
++        position[AXIS_4] += axis_a_per_segment;
++      #endif
++      #if N_AXIS > 4
++        position[AXIS_5] += axis_b_per_segment;
++      #endif
+       mc_line(position, pl_data);
+ 
+       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
+@@ -220,7 +233,7 @@ void mc_homing_cycle(uint8_t cycle_mask)
+ 
+   // -------------------------------------------------------------------------------------
+   // Perform homing routine. NOTE: Special motion case. Only system reset works.
+-  
++
+   #ifdef HOMING_SINGLE_AXIS_COMMANDS
+     if (cycle_mask) { limits_go_home(cycle_mask); } // Perform homing cycle based on mask.
+     else
+@@ -234,6 +247,14 @@ void mc_homing_cycle(uint8_t cycle_mask)
+     #ifdef HOMING_CYCLE_2
+       limits_go_home(HOMING_CYCLE_2);  // Homing cycle 2
+     #endif
++    #if N_AXIS > 3
++      #ifdef HOMING_CYCLE_3
++        limits_go_home(HOMING_CYCLE_3);  // Homing cycle 2
++      #endif
++      #ifdef HOMING_CYCLE_4
++        limits_go_home(HOMING_CYCLE_4);  // Homing cycle 2
++      #endif
++    #endif
+   }
+ 
+   protocol_execute_realtime(); // Check for reset and set system abort.
+@@ -378,8 +399,8 @@ void mc_reset()
+     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
+     // violated, by which, all bets are off.
+     if ((sys.state & (STATE_CYCLE | STATE_HOMING | STATE_JOG)) ||
+-    		(sys.step_control & (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION))) {
+-      if (sys.state == STATE_HOMING) { 
++        (sys.step_control & (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION))) {
++      if (sys.state == STATE_HOMING) {
+         if (!sys_rt_exec_alarm) {system_set_exec_alarm(EXEC_ALARM_HOMING_FAIL_RESET); }
+       } else { system_set_exec_alarm(EXEC_ALARM_ABORT_CYCLE); }
+       st_go_idle(); // Force kill steppers. Position has likely been lost.
+diff --git a/grbl/motion_control.h b/grbl/motion_control.h
+index 442ab2e..1c6d368 100644
+--- a/grbl/motion_control.h
++++ b/grbl/motion_control.h
+@@ -2,9 +2,10 @@
+   motion_control.h - high level interface for issuing motion commands
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+-  
++
+   Grbl is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+@@ -31,7 +32,12 @@
+ #define HOMING_CYCLE_X    bit(X_AXIS)
+ #define HOMING_CYCLE_Y    bit(Y_AXIS)
+ #define HOMING_CYCLE_Z    bit(Z_AXIS)
+-
++#if N_AXIS > 3
++  #define HOMING_CYCLE_4    bit(AXIS_4)
++#endif
++#if N_AXIS > 4
++  #define HOMING_CYCLE_5    bit(AXIS_5)
++#endif
+ 
+ // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
+ // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
+diff --git a/grbl/nuts_bolts.c b/grbl/nuts_bolts.c
+index 9d89a8d..40fed73 100644
+--- a/grbl/nuts_bolts.c
++++ b/grbl/nuts_bolts.c
+@@ -2,6 +2,7 @@
+   nuts_bolts.c - Shared functions
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+diff --git a/grbl/nuts_bolts.h b/grbl/nuts_bolts.h
+old mode 100644
+new mode 100755
+index c936f2b..8bbc7b1
+--- a/grbl/nuts_bolts.h
++++ b/grbl/nuts_bolts.h
+@@ -2,6 +2,7 @@
+   nuts_bolts.h - Header file for shared definitions, variables, and functions
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -28,12 +29,30 @@
+ #define SOME_LARGE_VALUE 1.0E+38
+ 
+ // Axis array index values. Must start with 0 and be continuous.
+-#define N_AXIS 3 // Number of axes
++#ifdef DEFAULTS_RAMPS_BOARD
++  // 5 axis support only for RAMPS 1.4 (for the moment :-)...)
++  // TODO: 5 (or 6) axis support for other hardwares.
++  #define N_AXIS 5           // Number of axes
++  #define AXIS_NAMES "XYZAB" // Letters (names) of axis
++  #define N_AXIS_LINEAR 3    // Number of linears axis
++#else
++  #define N_AXIS 3 // Number of axes
++#endif
+ #define X_AXIS 0 // Axis indexing value.
+ #define Y_AXIS 1
+ #define Z_AXIS 2
+-// #define A_AXIS 3
+-
++#if N_AXIS > 3
++  #define AXIS_4 3
++  #define AXIS_4_NAME 'A' // Letter of axis number 4
++#endif
++#if N_AXIS > 4
++  #define AXIS_5 4
++  #define AXIS_5_NAME 'B' // Letter of axis number 5
++#endif
++#if N_AXIS > 5
++  #error "N_AXIS must be <= 5. N_AXIS > 5 is not implemented."
++  // TODO: 6 axis support for other hardwares.#endif
++#endif
+ // CoreXY motor assignments. DO NOT ALTER.
+ // NOTE: If the A and B motor axis bindings are changed, this effects the CoreXY equations.
+ #ifdef COREXY
+diff --git a/grbl/planner.c b/grbl/planner.c
+index fcec8eb..6449290 100644
+--- a/grbl/planner.c
++++ b/grbl/planner.c
+@@ -2,6 +2,7 @@
+   planner.c - buffers movement commands and manages the acceleration profile plan
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+   Copyright (c) 2011 Jens Geisler
+@@ -327,13 +328,19 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
+   uint8_t idx;
+ 
+   // Copy position data based on type of motion being planned.
+-  if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) { 
++  if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) {
+     #ifdef COREXY
+       position_steps[X_AXIS] = system_convert_corexy_to_x_axis_steps(sys_position);
+       position_steps[Y_AXIS] = system_convert_corexy_to_y_axis_steps(sys_position);
+       position_steps[Z_AXIS] = sys_position[Z_AXIS];
++      #if N_AXIS > 3
++        position_steps[AXIS_4] = sys_position[AXIS_4];
++      #endif
++      #if N_AXIS > 4
++        position_steps[AXIS_5] = sys_position[AXIS_5];
++      #endif
+     #else
+-      memcpy(position_steps, sys_position, sizeof(sys_position)); 
++      memcpy(position_steps, sys_position, sizeof(sys_position));
+     #endif
+   } else { memcpy(position_steps, pl.position, sizeof(pl.position)); }
+ 
+@@ -366,7 +373,7 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
+       block->steps[idx] = labs(target_steps[idx]-position_steps[idx]);
+       block->step_event_count = max(block->step_event_count, block->steps[idx]);
+       delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_mm[idx];
+-	  #endif
++    #endif
+     unit_vec[idx] = delta_mm; // Store unit vector numerator
+ 
+     // Set direction bits. Bit enabled always means direction is negative.
+@@ -390,7 +397,7 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
+ 
+   // Store programmed rate.
+   if (block->condition & PL_COND_FLAG_RAPID_MOTION) { block->programmed_rate = block->rapid_rate; }
+-  else { 
++  else {
+     block->programmed_rate = pl_data->feed_rate;
+     if (block->condition & PL_COND_FLAG_INVERSE_TIME) { block->programmed_rate *= block->millimeters; }
+   }
+diff --git a/grbl/report.c b/grbl/report.c
+index 0759849..be6dd67 100644
+--- a/grbl/report.c
++++ b/grbl/report.c
+@@ -2,6 +2,7 @@
+   report.c - reporting and messaging methods
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
+ 
+   Grbl is free software: you can redistribute it and/or modify
+@@ -50,7 +51,7 @@ static void report_util_setting_string(uint8_t n) {
+   serial_write('(');
+   switch(n) {
+     case 0: printPgmString(PSTR("stp pulse")); break;
+-    case 1: printPgmString(PSTR("idl delay")); break; 
++    case 1: printPgmString(PSTR("idl delay")); break;
+     case 2: printPgmString(PSTR("stp inv")); break;
+     case 3: printPgmString(PSTR("dir inv")); break;
+     case 4: printPgmString(PSTR("stp en inv")); break;
+@@ -91,13 +92,13 @@ static void report_util_setting_string(uint8_t n) {
+ }
+ */
+ 
+-static void report_util_uint8_setting(uint8_t n, int val) { 
+-  report_util_setting_prefix(n); 
+-  print_uint8_base10(val); 
+-  report_util_line_feed(); // report_util_setting_string(n); 
++static void report_util_uint8_setting(uint8_t n, int val) {
++  report_util_setting_prefix(n);
++  print_uint8_base10(val);
++  report_util_line_feed(); // report_util_setting_string(n);
+ }
+-static void report_util_float_setting(uint8_t n, float val, uint8_t n_decimal) { 
+-  report_util_setting_prefix(n); 
++static void report_util_float_setting(uint8_t n, float val, uint8_t n_decimal) {
++  report_util_setting_prefix(n);
+   printFloat(val,n_decimal);
+   report_util_line_feed(); // report_util_setting_string(n);
+ }
+@@ -174,7 +175,7 @@ void report_init_message()
+ 
+ // Grbl help message
+ void report_grbl_help() {
+-  printPgmString(PSTR("[HLP:$$ $# $G $I $N $x=val $Nx=line $J=line $SLP $C $X $H ~ ! ? ctrl-x]\r\n"));    
++  printPgmString(PSTR("[HLP:$$ $# $G $I $N $x=val $Nx=line $J=line $SLP $C $X $H ~ ! ? ctrl-x]\r\n"));
+ }
+ 
+ 
+@@ -298,8 +299,8 @@ void report_gcode_modes()
+     switch (gc_state.modal.program_flow) {
+       case PROGRAM_FLOW_PAUSED : serial_write('0'); break;
+       // case PROGRAM_FLOW_OPTIONAL_STOP : serial_write('1'); break; // M1 is ignored and not supported.
+-      case PROGRAM_FLOW_COMPLETED_M2 : 
+-      case PROGRAM_FLOW_COMPLETED_M30 : 
++      case PROGRAM_FLOW_COMPLETED_M2 :
++      case PROGRAM_FLOW_COMPLETED_M30 :
+         print_uint8_base10(gc_state.modal.program_flow);
+         break;
+     }
+@@ -319,12 +320,12 @@ void report_gcode_modes()
+   } else { serial_write('9'); }
+ 
+   #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
+-    if (sys.override_ctrl == OVERRIDE_PARKING_MOTION) { 
++    if (sys.override_ctrl == OVERRIDE_PARKING_MOTION) {
+       report_util_gcode_modes_M();
+       print_uint8_base10(56);
+     }
+   #endif
+-  
++
+   printPgmString(PSTR(" T"));
+   print_uint8_base10(gc_state.tool);
+ 
+@@ -361,6 +362,13 @@ void report_build_info(char *line)
+   printPgmString(PSTR("[VER:" GRBL_VERSION "." GRBL_VERSION_BUILD ":"));
+   printString(line);
+   report_util_feedback_line_feed();
++  #if N_AXIS > 3
++    printPgmString(PSTR("[AXS:"));
++    print_uint8_base10(N_AXIS);
++    printPgmString(PSTR(":"));
++    printPgmString(PSTR(AXIS_NAMES));
++    report_util_feedback_line_feed();
++  #endif
+   printPgmString(PSTR("[OPT:")); // Generate compile-time build option list
+   serial_write('V');
+   serial_write('N');
+@@ -546,6 +554,12 @@ void report_realtime_status()
+         if (bit_istrue(lim_pin_state,bit(X_AXIS))) { serial_write('X'); }
+         if (bit_istrue(lim_pin_state,bit(Y_AXIS))) { serial_write('Y'); }
+         if (bit_istrue(lim_pin_state,bit(Z_AXIS))) { serial_write('Z'); }
++        #if N_AXIS > 3
++          if (bit_istrue(lim_pin_state,bit(AXIS_4))) { serial_write(AXIS_4_NAME); }
++        #endif
++        #if N_AXIS > 4
++          if (bit_istrue(lim_pin_state,bit(AXIS_5))) { serial_write(AXIS_5_NAME); }
++        #endif
+       }
+       if (ctrl_pin_state) {
+         #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+@@ -593,7 +607,7 @@ void report_realtime_status()
+         }
+         if (cl_state & COOLANT_STATE_FLOOD) { serial_write('F'); }
+         if (cl_state & COOLANT_STATE_MIST) { serial_write('M'); }
+-      }  
++      }
+     }
+   #endif
+ 
+diff --git a/grbl/serial.c b/grbl/serial.c
+index 3818129..099e1f9 100644
+--- a/grbl/serial.c
++++ b/grbl/serial.c
+@@ -2,6 +2,7 @@
+   serial.c - Low level functions for sending and recieving bytes via the serial port
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -156,11 +157,12 @@ ISR(SERIAL_RX)
+       if (data > 0x7F) { // Real-time control characters are extended ACSII only.
+         switch(data) {
+           case CMD_SAFETY_DOOR:   system_set_exec_state_flag(EXEC_SAFETY_DOOR); break; // Set as true
+-          case CMD_JOG_CANCEL:   
++          case CMD_JOG_CANCEL:
+             if (sys.state & STATE_JOG) { // Block all other states from invoking motion cancel.
+-              system_set_exec_state_flag(EXEC_MOTION_CANCEL); 
++              system_set_exec_state_flag(EXEC_MOTION_CANCEL);
++              serial_reset_read_buffer(); // Vide un reste éventuel de données dans le buffer
+             }
+-            break; 
++            break;
+           #ifdef DEBUG
+             case CMD_DEBUG_REPORT: {uint8_t sreg = SREG; cli(); bit_true(sys_rt_exec_debug,EXEC_DEBUG_REPORT); SREG = sreg;} break;
+           #endif
+@@ -200,3 +202,14 @@ void serial_reset_read_buffer()
+ {
+   serial_rx_buffer_tail = serial_rx_buffer_head;
+ }
++
++
++void serial_putstring(char* StringPtr)
++{
++  int i;
++  int len = strlen(StringPtr);
++  for(i=0; i<len; i++)
++  {
++    serial_write(StringPtr[i]);
++  }
++}
+diff --git a/grbl/serial.h b/grbl/serial.h
+index d5a4818..2c7a929 100644
+--- a/grbl/serial.h
++++ b/grbl/serial.h
+@@ -38,6 +38,9 @@ void serial_init();
+ // Writes one byte to the TX serial buffer. Called by main program.
+ void serial_write(uint8_t data);
+ 
++// Write à string to the TX serial buffer. (for debugging)
++void serial_putstring(char* StringPtr);
++
+ // Fetches the first byte in the serial read buffer. Called by main program.
+ uint8_t serial_read();
+ 
+diff --git a/grbl/settings.c b/grbl/settings.c
+index 91337a4..6a5713b 100644
+--- a/grbl/settings.c
++++ b/grbl/settings.c
+@@ -1,7 +1,8 @@
+ /*
+-  settings.c - eeprom configuration handling 
++  settings.c - eeprom configuration handling
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -28,7 +29,7 @@ settings_t settings;
+ void settings_store_startup_line(uint8_t n, char *line)
+ {
+   #ifdef FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE
+-    protocol_buffer_synchronize(); // A startup line may contain a motion and be executing. 
++    protocol_buffer_synchronize(); // A startup line may contain a motion and be executing.
+   #endif
+   uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+   memcpy_to_eeprom_with_checksum(addr,(char*)line, LINE_BUFFER_SIZE);
+@@ -94,9 +95,9 @@ void settings_restore(uint8_t restore_flag) {
+     if (DEFAULT_INVERT_LIMIT_PINS) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
+     if (DEFAULT_INVERT_PROBE_PIN) { settings.flags |= BITFLAG_INVERT_PROBE_PIN; }
+ 
+-    settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
+-    settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
+-    settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
++    settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_UNIT;
++    settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_UNIT;
++    settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_UNIT;
+     settings.max_rate[X_AXIS] = DEFAULT_X_MAX_RATE;
+     settings.max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE;
+     settings.max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE;
+@@ -106,6 +107,18 @@ void settings_restore(uint8_t restore_flag) {
+     settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
+     settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
+     settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);
++    #if N_AXIS > 3
++      settings.steps_per_mm[AXIS_4] = DEFAULT_A_STEPS_PER_UNIT;
++      settings.max_rate[AXIS_4] = DEFAULT_A_MAX_RATE;
++      settings.acceleration[AXIS_4] = DEFAULT_A_ACCELERATION;
++      settings.max_travel[AXIS_4] = (-DEFAULT_A_MAX_TRAVEL);
++    #endif
++    #if N_AXIS > 4
++      settings.steps_per_mm[AXIS_5] = DEFAULT_B_STEPS_PER_UNIT;
++      settings.max_rate[AXIS_5] = DEFAULT_B_MAX_RATE;
++      settings.acceleration[AXIS_5] = DEFAULT_B_ACCELERATION;
++      settings.max_travel[AXIS_5] = (-DEFAULT_B_MAX_TRAVEL);
++    #endif
+ 
+     write_global_settings();
+   }
+@@ -318,6 +331,12 @@ uint8_t get_step_pin_mask(uint8_t axis_idx)
+   #ifdef DEFAULTS_RAMPS_BOARD
+     if ( axis_idx == X_AXIS ) { return((1<<STEP_BIT(X_AXIS))); }
+     if ( axis_idx == Y_AXIS ) { return((1<<STEP_BIT(Y_AXIS))); }
++    #if N_AXIS > 3
++      if ( axis_idx == AXIS_4 ) { return((1<<STEP_BIT(AXIS_4))); }
++    #endif
++    #if N_AXIS > 4
++      if ( axis_idx == AXIS_5 ) { return((1<<STEP_BIT(AXIS_5))); }
++    #endif
+     return((1<<STEP_BIT(Z_AXIS)));
+   #else
+     if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
+@@ -333,6 +352,12 @@ uint8_t get_direction_pin_mask(uint8_t axis_idx)
+   #ifdef DEFAULTS_RAMPS_BOARD
+     if ( axis_idx == X_AXIS ) { return((1<<DIRECTION_BIT(X_AXIS))); }
+     if ( axis_idx == Y_AXIS ) { return((1<<DIRECTION_BIT(Y_AXIS))); }
++    #if N_AXIS > 3
++      if ( axis_idx == AXIS_4 ) { return((1<<DIRECTION_BIT(AXIS_4))); }
++    #endif
++    #if N_AXIS > 4
++      if ( axis_idx == AXIS_5 ) { return((1<<DIRECTION_BIT(AXIS_5))); }
++    #endif
+     return((1<<DIRECTION_BIT(Z_AXIS)));
+   #else
+     if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
+@@ -349,6 +374,12 @@ uint8_t get_direction_pin_mask(uint8_t axis_idx)
+   {
+     if ( axis_idx == X_AXIS ) { return((1<<MIN_LIMIT_BIT(X_AXIS))); }
+     if ( axis_idx == Y_AXIS ) { return((1<<MIN_LIMIT_BIT(Y_AXIS))); }
++    #if N_AXIS > 3
++      if ( axis_idx == AXIS_4 ) { return((1<<MIN_LIMIT_BIT(AXIS_4))); }
++    #endif
++    #if N_AXIS > 4
++      if ( axis_idx == AXIS_5 ) { return((1<<MIN_LIMIT_BIT(AXIS_5))); }
++    #endif
+     return((1<<MIN_LIMIT_BIT(Z_AXIS)));
+   }
+ 
+@@ -356,6 +387,12 @@ uint8_t get_direction_pin_mask(uint8_t axis_idx)
+    {
+      if ( axis_idx == X_AXIS ) { return((1<<MAX_LIMIT_BIT(X_AXIS))); }
+      if ( axis_idx == Y_AXIS ) { return((1<<MAX_LIMIT_BIT(Y_AXIS))); }
++    #if N_AXIS > 3
++      if ( axis_idx == AXIS_4 ) { return((1<<MAX_LIMIT_BIT(AXIS_4))); }
++    #endif
++    #if N_AXIS > 4
++      if ( axis_idx == AXIS_5 ) { return((1<<MAX_LIMIT_BIT(AXIS_5))); }
++    #endif
+      return((1<<MAX_LIMIT_BIT(Z_AXIS)));
+   }
+ #else
+diff --git a/grbl/settings.h b/grbl/settings.h
+index 5554025..a7fcfd3 100644
+--- a/grbl/settings.h
++++ b/grbl/settings.h
+@@ -2,6 +2,7 @@
+   settings.h - eeprom configuration handling
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -77,7 +78,7 @@
+ // Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards)
+ typedef struct {
+   // Axis settings
+-  float steps_per_mm[N_AXIS];
++  float steps_per_mm[N_AXIS]; // Steps per units => steps_per_degre for rotationals axis (AXIS_4 and AXIS_5)
+   float max_rate[N_AXIS];
+   float acceleration[N_AXIS];
+   float max_travel[N_AXIS];
+@@ -90,10 +91,10 @@ typedef struct {
+   uint8_t status_report_mask; // Mask to indicate desired report data.
+   float junction_deviation;
+   float arc_tolerance;
+-  
++
+   float rpm_max;
+   float rpm_min;
+-  
++
+   uint8_t flags;  // Contains default boolean settings
+ 
+   uint8_t homing_dir_mask;
+diff --git a/grbl/stepper.c b/grbl/stepper.c
+old mode 100644
+new mode 100755
+index d0fc3aa..c82a39f
+--- a/grbl/stepper.c
++++ b/grbl/stepper.c
+@@ -2,6 +2,7 @@
+   stepper.c - stepper motor driver: executes motion plans using stepper motors
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
+   Copyright (c) 2009-2011 Simen Svale Skogsrud
+ 
+@@ -97,7 +98,16 @@ typedef struct {
+   // Used by the bresenham line algorithm
+   uint32_t counter_x,        // Counter variables for the bresenham line tracer
+            counter_y,
++  #if N_AXIS == 4
++           counter_z,
++           counter_4;
++  #elif N_AXIS == 5
++           counter_z,
++           counter_4,
++           counter_5;
++  #else
+            counter_z;
++  #endif
+   #ifdef STEP_PULSE_DELAY
+     #ifdef DEFAULTS_RAMPS_BOARD
+       uint8_t step_bits[N_AXIS];  // Stores out_bits output to complete the step pulse delay
+@@ -176,7 +186,7 @@ typedef struct {
+   float decelerate_after; // Deceleration ramp start measured from end of block (mm)
+ 
+   float inv_rate;    // Used by PWM laser mode to speed up segment calculations.
+-  uint16_t current_spindle_pwm; 
++  uint16_t current_spindle_pwm;
+ } st_prep_t;
+ static st_prep_t prep;
+ 
+@@ -232,17 +242,29 @@ void st_wake_up()
+   #ifdef DEFAULTS_RAMPS_BOARD
+     int idx;
+   #endif // Ramps Board
+-  
++
+   // Enable stepper drivers.
+   #ifdef DEFAULTS_RAMPS_BOARD
+     if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) {
+       STEPPER_DISABLE_PORT(0) |= (1 << STEPPER_DISABLE_BIT(0));
+       STEPPER_DISABLE_PORT(1) |= (1 << STEPPER_DISABLE_BIT(1));
+       STEPPER_DISABLE_PORT(2) |= (1 << STEPPER_DISABLE_BIT(2));
++      #if N_AXIS > 3
++        STEPPER_DISABLE_PORT(3) |= (1 << STEPPER_DISABLE_BIT(3));
++      #endif
++      #if N_AXIS > 4
++        STEPPER_DISABLE_PORT(4) |= (1 << STEPPER_DISABLE_BIT(4));
++      #endif
+     } else {
+       STEPPER_DISABLE_PORT(0) &= ~(1 << STEPPER_DISABLE_BIT(0));
+       STEPPER_DISABLE_PORT(1) &= ~(1 << STEPPER_DISABLE_BIT(1));
+       STEPPER_DISABLE_PORT(2) &= ~(1 << STEPPER_DISABLE_BIT(2));
++      #if N_AXIS > 3
++        STEPPER_DISABLE_PORT(3) &= ~(1 << STEPPER_DISABLE_BIT(3));
++      #endif
++      #if N_AXIS > 4
++        STEPPER_DISABLE_PORT(4) &= ~(1 << STEPPER_DISABLE_BIT(4));
++      #endif
+     }
+     // Initialize stepper output bits to ensure first ISR call does not step.
+     for (idx = 0; idx < N_AXIS; idx++) {
+@@ -293,10 +315,22 @@ void st_go_idle()
+       STEPPER_DISABLE_PORT(0) |= (1 << STEPPER_DISABLE_BIT(0));
+       STEPPER_DISABLE_PORT(1) |= (1 << STEPPER_DISABLE_BIT(1));
+       STEPPER_DISABLE_PORT(2) |= (1 << STEPPER_DISABLE_BIT(2));
++      #if N_AXIS > 3
++        STEPPER_DISABLE_PORT(3) |= (1 << STEPPER_DISABLE_BIT(3));
++      #endif
++      #if N_AXIS > 4
++        STEPPER_DISABLE_PORT(4) |= (1 << STEPPER_DISABLE_BIT(4));
++      #endif
+     } else {
+       STEPPER_DISABLE_PORT(0) &= ~(1 << STEPPER_DISABLE_BIT(0));
+       STEPPER_DISABLE_PORT(1) &= ~(1 << STEPPER_DISABLE_BIT(1));
+       STEPPER_DISABLE_PORT(2) &= ~(1 << STEPPER_DISABLE_BIT(2));
++      #if N_AXIS > 3
++        STEPPER_DISABLE_PORT(3) &= ~(1 << STEPPER_DISABLE_BIT(3));
++      #endif
++      #if N_AXIS > 4
++        STEPPER_DISABLE_PORT(4) &= ~(1 << STEPPER_DISABLE_BIT(4));
++      #endif
+     }
+   #else
+     if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
+@@ -366,6 +400,12 @@ ISR(TIMER1_COMPA_vect)
+     DIRECTION_PORT(0) = (DIRECTION_PORT(0) & ~(1 << DIRECTION_BIT(0))) | st.dir_outbits[0];
+     DIRECTION_PORT(1) = (DIRECTION_PORT(1) & ~(1 << DIRECTION_BIT(1))) | st.dir_outbits[1];
+     DIRECTION_PORT(2) = (DIRECTION_PORT(2) & ~(1 << DIRECTION_BIT(2))) | st.dir_outbits[2];
++    #if N_AXIS > 3
++    DIRECTION_PORT(3) = (DIRECTION_PORT(3) & ~(1 << DIRECTION_BIT(3))) | st.dir_outbits[3];
++    #endif
++    #if N_AXIS > 4
++    DIRECTION_PORT(4) = (DIRECTION_PORT(4) & ~(1 << DIRECTION_BIT(4))) | st.dir_outbits[4];
++    #endif
+   #else
+     DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
+   #endif // Ramps Boafd
+@@ -376,12 +416,24 @@ ISR(TIMER1_COMPA_vect)
+       st.step_bits[0] = (STEP_PORT(0) & ~(1 << STEP_BIT(0))) | st.step_outbits[0]; // Store out_bits to prevent overwriting.
+       st.step_bits[1] = (STEP_PORT(1) & ~(1 << STEP_BIT(1))) | st.step_outbits[1]; // Store out_bits to prevent overwriting.
+       st.step_bits[2] = (STEP_PORT(2) & ~(1 << STEP_BIT(2))) | st.step_outbits[2]; // Store out_bits to prevent overwriting.
++      #if N_AXIS > 3
++        st.step_bits[3] = (STEP_PORT(3) & ~(1 << STEP_BIT(3))) | st.step_outbits[3]; // Store out_bits to prevent overwriting.
++      #endif
++      #if N_AXIS > 4
++        st.step_bits[4] = (STEP_PORT(4) & ~(1 << STEP_BIT(4))) | st.step_outbits[4]; // Store out_bits to prevent overwriting.
++      #endif
+     #else
+       STEP_PORT(0) = (STEP_PORT(0) & ~(1 << STEP_BIT(0))) | st.step_outbits[0];
+       STEP_PORT(1) = (STEP_PORT(1) & ~(1 << STEP_BIT(1))) | st.step_outbits[1];
+       STEP_PORT(2) = (STEP_PORT(2) & ~(1 << STEP_BIT(2))) | st.step_outbits[2];
++      #if N_AXIS > 3
++        STEP_PORT(3) = (STEP_PORT(3) & ~(1 << STEP_BIT(3))) | st.step_outbits[3];
++      #endif
++      #if N_AXIS > 4
++        STEP_PORT(4) = (STEP_PORT(4) & ~(1 << STEP_BIT(4))) | st.step_outbits[4];
++      #endif
+     #endif
+-  #else  
++  #else
+     #ifdef STEP_PULSE_DELAY
+       st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting.
+     #else  // Normal operation
+@@ -420,7 +472,13 @@ ISR(TIMER1_COMPA_vect)
+         st.exec_block = &st_block_buffer[st.exec_block_index];
+ 
+         // Initialize Bresenham line and distance counters
+-        st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
++        #if N_AXIS == 4
++          st.counter_x = st.counter_y = st.counter_z = st.counter_4 = (st.exec_block->step_event_count >> 1);
++        #elif N_AXIS == 5
++          st.counter_x = st.counter_y = st.counter_z = st.counter_4 = st.counter_5 = (st.exec_block->step_event_count >> 1);
++        #else
++          st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
++        #endif
+       }
+       #ifdef DEFAULTS_RAMPS_BOARD
+         for (i = 0; i < N_AXIS; i++)
+@@ -434,6 +492,12 @@ ISR(TIMER1_COMPA_vect)
+         st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
+         st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
+         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
++        #if N_AXIS > 3
++          st.steps[AXIS_4] = st.exec_block->steps[AXIS_4] >> st.exec_segment->amass_level;
++        #endif
++        #if N_AXIS > 4
++          st.steps[AXIS_5] = st.exec_block->steps[AXIS_5] >> st.exec_segment->amass_level;
++        #endif
+       #endif
+ 
+       // Set real-time spindle output as segment is loaded, just prior to the first step.
+@@ -523,6 +587,36 @@ ISR(TIMER1_COMPA_vect)
+       else { sys_position[Z_AXIS]++; }
+     }
+   #endif // Ramps Board
++  #if N_AXIS > 3
++    #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
++      st.counter_4 += st.steps[AXIS_4];
++    #else
++      st.counter_4 += st.exec_block->steps[AXIS_4];
++    #endif
++    #ifdef DEFAULTS_RAMPS_BOARD
++      if (st.counter_4 > st.exec_block->step_event_count) {
++        st.step_outbits[AXIS_4] |= (1<<STEP_BIT(AXIS_4));
++        st.counter_4 -= st.exec_block->step_event_count;
++        if (st.exec_block->direction_bits[AXIS_4] & (1<<DIRECTION_BIT(AXIS_4))) { sys_position[AXIS_4]--; }
++        else { sys_position[AXIS_4]++; }
++      }
++    #endif // Ramps Board
++  #endif // N_AXIS > 3
++  #if N_AXIS > 4
++    #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
++      st.counter_5 += st.steps[AXIS_5];
++    #else
++      st.counter_5 += st.exec_block->steps[AXIS_5];
++    #endif
++    #ifdef DEFAULTS_RAMPS_BOARD
++      if (st.counter_5 > st.exec_block->step_event_count) {
++        st.step_outbits[AXIS_5] |= (1<<STEP_BIT(AXIS_5));
++        st.counter_5 -= st.exec_block->step_event_count;
++        if (st.exec_block->direction_bits[AXIS_5] & (1<<DIRECTION_BIT(AXIS_5))) { sys_position[AXIS_5]--; }
++        else { sys_position[AXIS_5]++; }
++      }
++    #endif // Ramps Board
++  #endif // N_AXIS > 4
+ 
+   // During a homing cycle, lock out and prevent desired axes from moving.
+   #ifdef DEFAULTS_RAMPS_BOARD
+@@ -565,6 +659,12 @@ ISR(TIMER0_OVF_vect)
+     STEP_PORT(0) = (STEP_PORT(0) & ~(1 << STEP_BIT(0))) | step_port_invert_mask[0];
+     STEP_PORT(1) = (STEP_PORT(1) & ~(1 << STEP_BIT(1))) | step_port_invert_mask[1];
+     STEP_PORT(2) = (STEP_PORT(2) & ~(1 << STEP_BIT(2))) | step_port_invert_mask[2];
++    #if N_AXIS > 3
++      STEP_PORT(3) = (STEP_PORT(3) & ~(1 << STEP_BIT(3))) | step_port_invert_mask[3];
++    #endif
++    #if N_AXIS > 4
++      STEP_PORT(4) = (STEP_PORT(4) & ~(1 << STEP_BIT(4))) | step_port_invert_mask[4];
++    #endif
+   #else
+     STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK);
+   #endif // Ramps Board
+@@ -582,6 +682,12 @@ ISR(TIMER0_OVF_vect)
+       STEP_PORT(0) = st.step_bits[0]; // Begin step pulse.
+       STEP_PORT(1) = st.step_bits[1]; // Begin step pulse.
+       STEP_PORT(2) = st.step_bits[2]; // Begin step pulse.
++      #if N_AXIS > 3
++        STEP_PORT(3) = st.step_bits[3]; // Begin step pulse.
++      #endif
++      #if N_AXIS > 4
++        STEP_PORT(4) = st.step_bits[4]; // Begin step pulse.
++      #endif
+     #else
+       STEP_PORT = st.step_bits; // Begin step pulse.
+     #endif // Ramps Board
+@@ -634,15 +740,23 @@ void st_reset()
+     for (idx=0; idx<N_AXIS; idx++) {
+       st.dir_outbits[idx] = dir_port_invert_mask[idx]; // Initialize direction bits to default.
+     }
+-  
++
+     STEP_PORT(0) = (STEP_PORT(0) & ~(1 << STEP_BIT(0))) | step_port_invert_mask[0];
+     DIRECTION_PORT(0) = (DIRECTION_PORT(0) & ~(1 << DIRECTION_BIT(0))) | dir_port_invert_mask[0];
+-  
++
+     STEP_PORT(1) = (STEP_PORT(1) & ~(1 << STEP_BIT(1))) | step_port_invert_mask[1];
+     DIRECTION_PORT(1) = (DIRECTION_PORT(1) & ~(1 << DIRECTION_BIT(1))) | dir_port_invert_mask[1];
+-  
++
+     STEP_PORT(2) = (STEP_PORT(2) & ~(1 << STEP_BIT(2))) | step_port_invert_mask[2];
+     DIRECTION_PORT(2) = (DIRECTION_PORT(2) & ~(1 << DIRECTION_BIT(2))) | dir_port_invert_mask[2];
++    #if N_AXIS > 3
++      STEP_PORT(3) = (STEP_PORT(3) & ~(1 << STEP_BIT(3))) | step_port_invert_mask[3];
++      DIRECTION_PORT(3) = (DIRECTION_PORT(3) & ~(1 << DIRECTION_BIT(3))) | dir_port_invert_mask[3];
++    #endif
++    #if N_AXIS > 4
++      STEP_PORT(4) = (STEP_PORT(4) & ~(1 << STEP_BIT(4))) | step_port_invert_mask[4];
++      DIRECTION_PORT(4) = (DIRECTION_PORT(4) & ~(1 << DIRECTION_BIT(4))) | dir_port_invert_mask[4];
++    #endif
+   #else
+     st.dir_outbits = dir_port_invert_mask; // Initialize direction bits to default.
+ 
+@@ -661,14 +775,32 @@ void stepper_init()
+     STEP_DDR(0) |= 1<<STEP_BIT(0);
+     STEP_DDR(1) |= 1<<STEP_BIT(1);
+     STEP_DDR(2) |= 1<<STEP_BIT(2);
+-  
++    #if N_AXIS > 3
++      STEP_DDR(3) |= 1<<STEP_BIT(3);
++    #endif
++    #if N_AXIS > 4
++      STEP_DDR(4) |= 1<<STEP_BIT(4);
++    #endif
++
+     STEPPER_DISABLE_DDR(0) |= 1<<STEPPER_DISABLE_BIT(0);
+     STEPPER_DISABLE_DDR(1) |= 1<<STEPPER_DISABLE_BIT(1);
+     STEPPER_DISABLE_DDR(2) |= 1<<STEPPER_DISABLE_BIT(2);
+-  
++    #if N_AXIS > 3
++      STEPPER_DISABLE_DDR(3) |= 1<<STEPPER_DISABLE_BIT(3);
++    #endif
++    #if N_AXIS > 4
++      STEPPER_DISABLE_DDR(4) |= 1<<STEPPER_DISABLE_BIT(4);
++    #endif
++
+     DIRECTION_DDR(0) |= 1<<DIRECTION_BIT(0);
+     DIRECTION_DDR(1) |= 1<<DIRECTION_BIT(1);
+     DIRECTION_DDR(2) |= 1<<DIRECTION_BIT(2);
++    #if N_AXIS > 3
++      DIRECTION_DDR(3) |= 1<<DIRECTION_BIT(3);
++    #endif
++    #if N_AXIS > 4
++      DIRECTION_DDR(4) |= 1<<DIRECTION_BIT(4);
++    #endif
+   #else
+     STEP_DDR |= STEP_MASK;
+     STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+@@ -833,47 +965,47 @@ void st_prep_buffer()
+         } else {
+           prep.current_speed = sqrt(pl_block->entry_speed_sqr);
+         }
+-        
++
+         // Setup laser mode variables. PWM rate adjusted motions will always complete a motion with the
+-        // spindle off. 
++        // spindle off.
+         st_prep_block->is_pwm_rate_adjusted = false;
+         if (settings.flags & BITFLAG_LASER_MODE) {
+-          if (pl_block->condition & PL_COND_FLAG_SPINDLE_CCW) { 
++          if (pl_block->condition & PL_COND_FLAG_SPINDLE_CCW) {
+             // Pre-compute inverse programmed rate to speed up PWM updating per step segment.
+             prep.inv_rate = 1.0/pl_block->programmed_rate;
+-            st_prep_block->is_pwm_rate_adjusted = true; 
++            st_prep_block->is_pwm_rate_adjusted = true;
+           }
+         }
+       }
+ 
+-			/* ---------------------------------------------------------------------------------
+-			 Compute the velocity profile of a new planner block based on its entry and exit
+-			 speeds, or recompute the profile of a partially-completed planner block if the
+-			 planner has updated it. For a commanded forced-deceleration, such as from a feed
+-			 hold, override the planner velocities and decelerate to the target exit speed.
+-			*/
+-			prep.mm_complete = 0.0; // Default velocity profile complete at 0.0mm from end of block.
+-			float inv_2_accel = 0.5/pl_block->acceleration;
+-			if (sys.step_control & STEP_CONTROL_EXECUTE_HOLD) { // [Forced Deceleration to Zero Velocity]
+-				// Compute velocity profile parameters for a feed hold in-progress. This profile overrides
+-				// the planner block profile, enforcing a deceleration to zero speed.
+-				prep.ramp_type = RAMP_DECEL;
+-				// Compute decelerate distance relative to end of block.
+-				float decel_dist = pl_block->millimeters - inv_2_accel*pl_block->entry_speed_sqr;
+-				if (decel_dist < 0.0) {
+-					// Deceleration through entire planner block. End of feed hold is not in this block.
+-					prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
+-				} else {
+-					prep.mm_complete = decel_dist; // End of feed hold.
+-					prep.exit_speed = 0.0;
+-				}
+-			} else { // [Normal Operation]
+-				// Compute or recompute velocity profile parameters of the prepped planner block.
+-				prep.ramp_type = RAMP_ACCEL; // Initialize as acceleration ramp.
+-				prep.accelerate_until = pl_block->millimeters;
+-
+-				float exit_speed_sqr;
+-				float nominal_speed;
++      /* ---------------------------------------------------------------------------------
++       Compute the velocity profile of a new planner block based on its entry and exit
++       speeds, or recompute the profile of a partially-completed planner block if the
++       planner has updated it. For a commanded forced-deceleration, such as from a feed
++       hold, override the planner velocities and decelerate to the target exit speed.
++      */
++      prep.mm_complete = 0.0; // Default velocity profile complete at 0.0mm from end of block.
++      float inv_2_accel = 0.5/pl_block->acceleration;
++      if (sys.step_control & STEP_CONTROL_EXECUTE_HOLD) { // [Forced Deceleration to Zero Velocity]
++        // Compute velocity profile parameters for a feed hold in-progress. This profile overrides
++        // the planner block profile, enforcing a deceleration to zero speed.
++        prep.ramp_type = RAMP_DECEL;
++        // Compute decelerate distance relative to end of block.
++        float decel_dist = pl_block->millimeters - inv_2_accel*pl_block->entry_speed_sqr;
++        if (decel_dist < 0.0) {
++          // Deceleration through entire planner block. End of feed hold is not in this block.
++          prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
++        } else {
++          prep.mm_complete = decel_dist; // End of feed hold.
++          prep.exit_speed = 0.0;
++        }
++      } else { // [Normal Operation]
++        // Compute or recompute velocity profile parameters of the prepped planner block.
++        prep.ramp_type = RAMP_ACCEL; // Initialize as acceleration ramp.
++        prep.accelerate_until = pl_block->millimeters;
++
++        float exit_speed_sqr;
++        float nominal_speed;
+         if (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION) {
+           prep.exit_speed = exit_speed_sqr = 0.0; // Enforce stop at end of system motion.
+         } else {
+@@ -882,9 +1014,9 @@ void st_prep_buffer()
+         }
+ 
+         nominal_speed = plan_compute_profile_nominal_speed(pl_block);
+-				float nominal_speed_sqr = nominal_speed*nominal_speed;
+-				float intersect_distance =
+-								0.5*(pl_block->millimeters+inv_2_accel*(pl_block->entry_speed_sqr-exit_speed_sqr));
++        float nominal_speed_sqr = nominal_speed*nominal_speed;
++        float intersect_distance =
++                0.5*(pl_block->millimeters+inv_2_accel*(pl_block->entry_speed_sqr-exit_speed_sqr));
+ 
+         if (pl_block->entry_speed_sqr > nominal_speed_sqr) { // Only occurs during override reductions.
+           prep.accelerate_until = pl_block->millimeters - inv_2_accel*(pl_block->entry_speed_sqr-nominal_speed_sqr);
+@@ -907,39 +1039,39 @@ void st_prep_buffer()
+             prep.maximum_speed = nominal_speed;
+             prep.ramp_type = RAMP_DECEL_OVERRIDE;
+           }
+-				} else if (intersect_distance > 0.0) {
+-					if (intersect_distance < pl_block->millimeters) { // Either trapezoid or triangle types
+-						// NOTE: For acceleration-cruise and cruise-only types, following calculation will be 0.0.
+-						prep.decelerate_after = inv_2_accel*(nominal_speed_sqr-exit_speed_sqr);
+-						if (prep.decelerate_after < intersect_distance) { // Trapezoid type
+-							prep.maximum_speed = nominal_speed;
+-							if (pl_block->entry_speed_sqr == nominal_speed_sqr) {
+-								// Cruise-deceleration or cruise-only type.
+-								prep.ramp_type = RAMP_CRUISE;
+-							} else {
+-								// Full-trapezoid or acceleration-cruise types
+-								prep.accelerate_until -= inv_2_accel*(nominal_speed_sqr-pl_block->entry_speed_sqr);
+-							}
+-						} else { // Triangle type
+-							prep.accelerate_until = intersect_distance;
+-							prep.decelerate_after = intersect_distance;
+-							prep.maximum_speed = sqrt(2.0*pl_block->acceleration*intersect_distance+exit_speed_sqr);
+-						}
+-					} else { // Deceleration-only type
++        } else if (intersect_distance > 0.0) {
++          if (intersect_distance < pl_block->millimeters) { // Either trapezoid or triangle types
++            // NOTE: For acceleration-cruise and cruise-only types, following calculation will be 0.0.
++            prep.decelerate_after = inv_2_accel*(nominal_speed_sqr-exit_speed_sqr);
++            if (prep.decelerate_after < intersect_distance) { // Trapezoid type
++              prep.maximum_speed = nominal_speed;
++              if (pl_block->entry_speed_sqr == nominal_speed_sqr) {
++                // Cruise-deceleration or cruise-only type.
++                prep.ramp_type = RAMP_CRUISE;
++              } else {
++                // Full-trapezoid or acceleration-cruise types
++                prep.accelerate_until -= inv_2_accel*(nominal_speed_sqr-pl_block->entry_speed_sqr);
++              }
++            } else { // Triangle type
++              prep.accelerate_until = intersect_distance;
++              prep.decelerate_after = intersect_distance;
++              prep.maximum_speed = sqrt(2.0*pl_block->acceleration*intersect_distance+exit_speed_sqr);
++            }
++          } else { // Deceleration-only type
+             prep.ramp_type = RAMP_DECEL;
+             // prep.decelerate_after = pl_block->millimeters;
+             // prep.maximum_speed = prep.current_speed;
+-					}
+-				} else { // Acceleration-only type
+-					prep.accelerate_until = 0.0;
+-					// prep.decelerate_after = 0.0;
+-					prep.maximum_speed = prep.exit_speed;
+-				}
+-			}
+-      
++          }
++        } else { // Acceleration-only type
++          prep.accelerate_until = 0.0;
++          // prep.decelerate_after = 0.0;
++          prep.maximum_speed = prep.exit_speed;
++        }
++      }
++
+       bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM); // Force update whenever updating block.
+     }
+-    
++
+     // Initialize new segment
+     segment_t *prep_segment = &segment_buffer[segment_buffer_head];
+ 
+@@ -1048,16 +1180,16 @@ void st_prep_buffer()
+     /* -----------------------------------------------------------------------------------
+       Compute spindle speed PWM output for step segment
+     */
+-    
++
+     if (st_prep_block->is_pwm_rate_adjusted || (sys.step_control & STEP_CONTROL_UPDATE_SPINDLE_PWM)) {
+       if (pl_block->condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)) {
+         float rpm = pl_block->spindle_speed;
+-        // NOTE: Feed and rapid overrides are independent of PWM value and do not alter laser power/rate.        
++        // NOTE: Feed and rapid overrides are independent of PWM value and do not alter laser power/rate.
+         if (st_prep_block->is_pwm_rate_adjusted) { rpm *= (prep.current_speed * prep.inv_rate); }
+         // If current_speed is zero, then may need to be rpm_min*(100/MAX_SPINDLE_SPEED_OVERRIDE)
+         // but this would be instantaneous only and during a motion. May not matter at all.
+         prep.current_spindle_pwm = spindle_compute_pwm_value(rpm);
+-      } else { 
++      } else {
+         sys.spindle_speed = 0.0;
+         prep.current_spindle_pwm = SPINDLE_PWM_OFF_VALUE;
+       }
+@@ -1065,7 +1197,7 @@ void st_prep_buffer()
+     }
+     prep_segment->spindle_pwm = prep.current_spindle_pwm; // Reload segment PWM value
+ 
+-    
++
+     /* -----------------------------------------------------------------------------------
+        Compute segment step rate, steps to execute, and apply necessary rate corrections.
+        NOTE: Steps are computed by direct scalar conversion of the millimeter distance
+diff --git a/grbl/system.c b/grbl/system.c
+old mode 100644
+new mode 100755
+index 59790eb..f676d99
+--- a/grbl/system.c
++++ b/grbl/system.c
+@@ -2,6 +2,7 @@
+   system.c - Handles system level commands and real-time processes
+   Part of Grbl
+ 
++  Copyright (c) 2017-2018 Gauthier Briere
+   Copyright (c) 2014-2016 Sungeun K. Jeon for Gnea Research LLC
+ 
+   Grbl is free software: you can redistribute it and/or modify
+@@ -67,10 +68,10 @@ ISR(CONTROL_INT_vect)
+     } else if (bit_istrue(pin,CONTROL_PIN_INDEX_CYCLE_START)) {
+       bit_true(sys_rt_exec_state, EXEC_CYCLE_START);
+     } else if (bit_istrue(pin,CONTROL_PIN_INDEX_FEED_HOLD)) {
+-      bit_true(sys_rt_exec_state, EXEC_FEED_HOLD); 
++      bit_true(sys_rt_exec_state, EXEC_FEED_HOLD);
+     } else if (bit_istrue(pin,CONTROL_PIN_INDEX_SAFETY_DOOR)) {
+       bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
+-    } 
++    }
+   }
+ }
+ 
+@@ -176,6 +177,12 @@ uint8_t system_execute_line(char *line)
+                 case 'X': mc_homing_cycle(HOMING_CYCLE_X); break;
+                 case 'Y': mc_homing_cycle(HOMING_CYCLE_Y); break;
+                 case 'Z': mc_homing_cycle(HOMING_CYCLE_Z); break;
++              #if N_AXIS > 3
++                case AXIS_4_NAME: mc_homing_cycle(HOMING_CYCLE_4); break;
++              #endif
++              #if N_AXIS > 4
++                case AXIS_5_NAME: mc_homing_cycle(HOMING_CYCLE_5); break;
++              #endif
+                 default: return(STATUS_INVALID_STATEMENT);
+               }
+           #endif

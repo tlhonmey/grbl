@@ -35,7 +35,7 @@
 // one configuration file by placing their specific defaults and pin map at the bottom of this file.
 // If doing so, simply comment out these two defines and see instructions below.
 //#define DEFAULTS_GENERIC
-#define DEFAULT_CNC3020
+#define DEFAULT_CNC3060
 #ifdef WIN32
 #define CPU_MAP_WIN32
 #endif
@@ -111,8 +111,24 @@
 // on separate pin, but homed in one cycle. Also, it should be noted that the function of hard limits
 // will not be affected by pin sharing.
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
-#define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
-#define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
+//#define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
+//#define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
+ #if N_AXIS == 4 // 4 axis : homing
+   #define HOMING_CYCLE_0 (1<<A_AXIS) // Home 4th axis (A)
+   #define HOMING_CYCLE_1 (1<<X_AXIS) // Home X axis
+   #define HOMING_CYCLE_2 (1<<Y_AXIS) // Home Y axis
+   #define HOMING_CYCLE_3 (1<<Z_AXIS) // OPTIONAL: Home Z axis
+ #elif N_AXIS == 5 // 5 axis : homing
+   #define HOMING_CYCLE_0 (1<<A_AXIS) // Home 4th axis (A)
+   #define HOMING_CYCLE_1 (1<<B_AXIS) // Home 5th axis (B)
+   #define HOMING_CYCLE_2 (1<<X_AXIS) // Home X axis
+   #define HOMING_CYCLE_3 (1<<Y_AXIS) // Home Y axis
+   #define HOMING_CYCLE_4 (1<<Z_AXIS) // OPTIONAL: Home Z axis
+ #else // Classic 3 axis
+   #define HOMING_CYCLE_0 (1<<X_AXIS) // Home X axis
+   #define HOMING_CYCLE_1 (1<<Y_AXIS) // Home Y axis
+   #define HOMING_CYCLE_2 (1<<Z_AXIS) // OPTIONAL: Home Z axis
+ #endif
 // #define HOMING_CYCLE_2                         // OPTIONAL: Uncomment and add axes mask to enable
 
 // NOTE: The following are two examples to setup homing for 2-axis machines.
@@ -181,7 +197,7 @@
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
 // previous tool path, as if nothing happened.
-// #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
+ #define ENABLE_SAFETY_DOOR_INPUT_PIN // Default disabled. Uncomment to enable.
 
 // After the safety door switch has been toggled and restored, this setting sets the power-up delay
 // between restoring the spindle and coolant and resuming the cycle.
@@ -201,8 +217,8 @@
 // normally-closed switches on the specified pins, rather than the default normally-open switches.
 // NOTE: The top option will mask and invert all control pins. The bottom option is an example of
 // inverting only two control pins, the safety door and reset. See cpu_map.h for other bit definitions.
-// #define INVERT_CONTROL_PIN_MASK CONTROL_MASK // Default disabled. Uncomment to disable.
-// #define INVERT_CONTROL_PIN_MASK ((1<<CONTROL_SAFETY_DOOR_BIT)|(CONTROL_RESET_BIT)) // Default disabled.
+//#define INVERT_CONTROL_PIN_MASK CONTROL_MASK // Default disabled. Uncomment to disable.
+//#define INVERT_CONTROL_PIN_MASK ((1<<CONTROL_SAFETY_DOOR_BIT)|(CONTROL_RESET_BIT)) // Default disabled.
 
 // Inverts select limit pin states based on the following mask. This effects all limit pin functions,
 // such as hard limits and homing. However, this is different from overall invert limits setting.

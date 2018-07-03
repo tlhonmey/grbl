@@ -235,7 +235,7 @@ Grbl needs to know how far each step will take the tool in reality. To calculate
 * The full steps per revolution of your steppers (typically 200)
 * The microsteps per step of your controller (typically 1, 2, 4, 8, or 16). _Tip: Using high microstep values (e.g., 16) can reduce your stepper motor torque, so use the lowest that gives you the desired axis resolution and comfortable running properties._
 
-The steps/mm can then be calculated like this: ```steps_per_mm = (steps_per_revolution*microsteps)/mm_per_rev```
+The steps/mm can then be calculated like this: ```steps_per_unit = (steps_per_revolution*microsteps)/mm_per_rev```
 
 Compute this value for every axis and write these settings to Grbl.
 
