@@ -210,7 +210,7 @@ typedef struct {
   float r;         // Arc radius
   float s;         // Spindle speed
   uint8_t t;       // Tool selection
-  float xyz[3];    // X,Y,Z Translational axes
+  float xyz[N_AXIS];    // X,Y,Z Translational axes
 } gc_values_t;
 
 
