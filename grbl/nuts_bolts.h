@@ -44,9 +44,17 @@
 
 #if N_AXIS > 3
   #define A_AXIS 3
+
 #endif
 #if N_AXIS > 4
   #define B_AXIS 4
+  #define AXIS_NAMES "XYZAB" // Letters (names) of axis
+#endif
+#if N_AXIS == 3
+    #define AXIS_NAMES "XYZA" // Letters (names) of axis
+#endif
+#if N_AXIS == 4
+    #define AXIS_NAMES "XYZAB" // Letters (names) of axis
 #endif
 // #define A_AXIS 3
 

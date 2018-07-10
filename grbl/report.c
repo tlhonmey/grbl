@@ -50,7 +50,7 @@ static void report_util_setting_string(uint8_t n) {
   serial_write('(');
   switch(n) {
     case 0: printPgmString(PSTR("stp pulse")); break;
-    case 1: printPgmString(PSTR("idl delay")); break; 
+    case 1: printPgmString(PSTR("idl delay")); break;
     case 2: printPgmString(PSTR("stp inv")); break;
     case 3: printPgmString(PSTR("dir inv")); break;
     case 4: printPgmString(PSTR("stp en inv")); break;
@@ -94,7 +94,7 @@ static void report_util_setting_string(uint8_t n) {
 static void report_util_uint8_setting(uint8_t n, int val) {
   report_util_setting_prefix(n);
   print_uint8_base10(val);
-  report_util_line_feed(); // report_util_setting_string(n); 
+  report_util_line_feed(); // report_util_setting_string(n);
 }
 static void report_util_float_setting(uint8_t n, float val, uint8_t n_decimal) {
   report_util_setting_prefix(n);
@@ -173,7 +173,7 @@ void report_init_message()
 
 // Grbl help message
 void report_grbl_help() {
-  printPgmString(PSTR("[HLP:$$ $# $G $I $N $x=val $Nx=line $J=line $SLP $C $X $H ~ ! ? ctrl-x]\r\n"));    
+  printPgmString(PSTR("[HLP:$$ $# $G $I $N $x=val $Nx=line $J=line $SLP $C $X $H ~ ! ? ctrl-x]\r\n"));
 }
 
 
@@ -301,8 +301,8 @@ void report_gcode_modes()
     switch (gc_state.modal.program_flow) {
       case PROGRAM_FLOW_PAUSED : serial_write('0'); break;
       // case PROGRAM_FLOW_OPTIONAL_STOP : serial_write('1'); break; // M1 is ignored and not supported.
-      case PROGRAM_FLOW_COMPLETED_M2 : 
-      case PROGRAM_FLOW_COMPLETED_M30 : 
+      case PROGRAM_FLOW_COMPLETED_M2 :
+      case PROGRAM_FLOW_COMPLETED_M30 :
         print_uint8_base10(gc_state.modal.program_flow);
         break;
     }
@@ -372,6 +372,13 @@ void report_build_info(char *line)
   printPgmString(PSTR("[VER:" GRBL_VERSION "." GRBL_VERSION_BUILD ":"));
   printString(line);
   report_util_feedback_line_feed();
+  #if N_AXIS > 3
+    printPgmString(PSTR("[AXS:"));
+    print_uint8_base10(N_AXIS);
+    printPgmString(PSTR(":"));
+    printPgmString(PSTR(AXIS_NAMES));
+    report_util_feedback_line_feed();
+  #endif
   printPgmString(PSTR("[OPT:")); // Generate compile-time build option list
   #ifdef VARIABLE_SPINDLE
     serial_write('V');
@@ -560,7 +567,7 @@ void report_realtime_status()
 #else
   printPgmString(PSTR("|F:"));
   printFloat_RateValue(st_get_realtime_rate());
-#endif      
+#endif
 #endif
 
 #ifdef REPORT_FIELD_PIN_STATE
@@ -574,6 +581,12 @@ void report_realtime_status()
       if (bit_istrue(lim_pin_state, bit(X_AXIS))) { serial_write('X'); }
       if (bit_istrue(lim_pin_state, bit(Y_AXIS))) { serial_write('Y'); }
       if (bit_istrue(lim_pin_state, bit(Z_AXIS))) { serial_write('Z'); }
+   #if N_AXIS > 3
+     if (bit_istrue(lim_pin_state,bit(A_AXIS))) { serial_write('A'); }
+   #endif
+   #if N_AXIS > 4
+     if (bit_istrue(lim_pin_state,bit(B_AXIS))) { serial_write('B'); }
+   #endif
     }
     if (ctrl_pin_state) {
 #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
@@ -618,7 +631,7 @@ void report_realtime_status()
       if (sp_state || cl_state) {
         printPgmString(PSTR("|A:"));
         if (sp_state) { // != SPINDLE_STATE_DISABLE
-          #ifdef VARIABLE_SPINDLE 
+          #ifdef VARIABLE_SPINDLE
             #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
               serial_write('S'); // CW
             #else

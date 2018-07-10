@@ -28,7 +28,7 @@ settings_t settings;
 void settings_store_startup_line(uint8_t n, char *line)
 {
   #ifdef FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE
-    protocol_buffer_synchronize(); // A startup line may contain a motion and be executing. 
+    protocol_buffer_synchronize(); // A startup line may contain a motion and be executing.
   #endif
   uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
   memcpy_to_eeprom_with_checksum(addr,(char*)line, LINE_BUFFER_SIZE);
@@ -106,6 +106,18 @@ void settings_restore(uint8_t restore_flag) {
     settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
     settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
     settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);
+   #if N_AXIS > 3
+     settings.steps_per_unit[A_AXIS] = DEFAULT_A_STEPS_PER_UNIT;
+     settings.max_rate[A_AXIS] = DEFAULT_A_MAX_RATE;
+     settings.acceleration[A_AXIS] = DEFAULT_A_ACCELERATION;
+     settings.max_travel[A_AXIS] = (-DEFAULT_A_MAX_TRAVEL);
+   #endif
+   #if N_AXIS > 4
+     settings.steps_per_unit[B_AXIS] = DEFAULT_B_STEPS_PER_UNIT;
+     settings.max_rate[B_AXIS] = DEFAULT_B_MAX_RATE;
+     settings.acceleration[B_AXIS] = DEFAULT_B_ACCELERATION;
+     settings.max_travel[B_AXIS] = (-DEFAULT_B_MAX_TRAVEL);
+   #endif
 
     write_global_settings();
   }
@@ -171,6 +183,12 @@ uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 		coord_data[X_AXIS] = 0.0f;
 		coord_data[Y_AXIS] = 0.0f;
 		coord_data[Z_AXIS] = 0.0f;
+    #if N_AXIS > 3
+		  coord_data[A_AXIS] = 0.0f;
+		#endif
+    #if N_AXIS > 4
+      coord_data[B_AXIS] = 0.0f;
+    #endif
 		settings_write_coord_data(coord_select,coord_data);
     return(false);
   }

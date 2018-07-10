@@ -83,7 +83,7 @@ const PORTPINDEF limit_pin_mask[N_AXIS] =
   #endif
 #endif
 #ifdef WIN32
-#include <process.h> 
+#include <process.h>
 unsigned char PORTB = 0;
 unsigned char DDRD = 0;
 unsigned char DDRB = 0;
@@ -134,7 +134,17 @@ typedef struct {
   // Used by the bresenham line algorithm
   uint32_t counter_x,        // Counter variables for the bresenham line tracer
            counter_y,
+  #if N_AXIS == 4
+           counter_z,
+           counter_a;
+  #elif N_AXIS == 5
+           counter_z,
+           counter_a,
+           counter_b;
+  #else
            counter_z;
+  #endif
+
   #ifdef STEP_PULSE_DELAY
     uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
   #endif
@@ -254,13 +264,13 @@ static st_prep_t prep;
 void st_wake_up()
 {
   // Enable stepper drivers.
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) 
-  { 
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE))
+  {
 	  SetStepperDisableBit();
   }
-  else 
-  { 
-	  ResetStepperDisableBit(); 
+  else
+  {
+	  ResetStepperDisableBit();
   }
 
   // Initialize stepper output bits to ensure first ISR call does not step.
@@ -297,7 +307,7 @@ void st_wake_up()
 
   TIM2->ARR = st.exec_segment->cycles_per_tick - 1;
   /* Set the Autoreload value */
-#ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
+#ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
   TIM2->PSC = st.exec_segment->prescaler;
 #endif
   TIM2->EGR = TIM_PSCReloadMode_Immediate;
@@ -332,12 +342,12 @@ void st_go_idle()
     pin_state = true; // Override. Disable steppers.
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
-  if (pin_state) 
-  { 
+  if (pin_state)
+  {
 	  SetStepperDisableBit();
   }
-  else 
-  { 
+  else
+  {
 	  ResetStepperDisableBit();
   }
 }
@@ -482,7 +492,7 @@ void Timer1Proc()
 #ifdef STM32F103C8
 	  TIM2->ARR = st.exec_segment->cycles_per_tick - 1;
 	  /* Set the Autoreload value */
-#ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
+#ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
 	  TIM2->PSC = st.exec_segment->prescaler;
 #endif
 #endif
@@ -494,7 +504,14 @@ void Timer1Proc()
         st.exec_block = &st_block_buffer[st.exec_block_index];
 
         // Initialize Bresenham line and distance counters
+
+      #if N_AXIS == 4
+        st.counter_x = st.counter_y = st.counter_z = st.counter_a = (st.exec_block->step_event_count >> 1);
+      #elif N_AXIS == 5
+        st.counter_x = st.counter_y = st.counter_z = st.counter_a = st.counter_b = (st.exec_block->step_event_count >> 1);
+      #else
         st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
+      #endif
       }
       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask;
 
@@ -503,6 +520,12 @@ void Timer1Proc()
         st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
         st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
+      #if N_AXIS > 3
+        st.steps[A_AXIS] = st.exec_block->steps[A_AXIS] >> st.exec_segment->amass_level;
+      #endif
+      #if N_AXIS > 4
+        st.steps[B_AXIS] = st.exec_block->steps[B_AXIS] >> st.exec_segment->amass_level;
+      #endif
       #endif
 
       #ifdef VARIABLE_SPINDLE
@@ -563,6 +586,33 @@ void Timer1Proc()
     if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys_position[Z_AXIS]--; }
     else { sys_position[Z_AXIS]++; }
   }
+#if N_AXIS > 3
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    st.counter_a += st.steps[A_AXIS];
+  #else
+    st.counter_a += st.exec_block->steps[A_AXIS];
+  #endif
+  if (st.counter_a > st.exec_block->step_event_count) {
+    st.step_outbits |= (1<<A_STEP_BIT);
+    st.counter_a -= st.exec_block->step_event_count;
+    if (st.exec_block->direction_bits & (1<<A_DIRECTION_BIT)) { sys_position[A_AXIS]--; }
+    else { sys_position[A_AXIS]++; }
+  }
+#endif //N_AXIS > 3
+
+#if N_AXIS > 4
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    st.counter_b += st.steps[B_AXIS];
+  #else
+    st.counter_b += st.exec_block->steps[B_AXIS];
+  #endif
+  if (st.counter_b > st.exec_block->step_event_count) {
+    st.step_outbits |= (1<<B_STEP_BIT);
+    st.counter_b -= st.exec_block->step_event_count;
+    if (st.exec_block->direction_bits & (1<<B_DIRECTION_BIT)) { sys_position[B_AXIS]--; }
+    else { sys_position[B_AXIS]++; }
+  }
+#endif //N_AXIS > 4
 
   // During a homing cycle, lock out and prevent desired axes from moving.
   if (sys.state == STATE_HOMING) { st.step_outbits &= sys.homing_axis_lock; }
@@ -577,9 +627,9 @@ void Timer1Proc()
 		segment_tail_next = 0;
 	segment_buffer_tail = segment_tail_next;
 #else
-    if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) 
-	{ 
-		segment_buffer_tail = 0; 
+    if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE)
+	{
+		segment_buffer_tail = 0;
 	}
 #endif
   }
@@ -915,7 +965,7 @@ void st_prep_buffer()
         }
 #ifdef VARIABLE_SPINDLE
         // Setup laser mode variables. PWM rate adjusted motions will always complete a motion with the
-        // spindle off. 
+        // spindle off.
         st_prep_block->is_pwm_rate_adjusted = false;
         if (settings.flags & BITFLAG_LASER_MODE) {
           if (pl_block->condition & PL_COND_FLAG_SPINDLE_CCW) {
@@ -1017,12 +1067,12 @@ void st_prep_buffer()
 					prep.maximum_speed = prep.exit_speed;
 				}
 			}
-      
+
       #ifdef VARIABLE_SPINDLE
         bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM); // Force update whenever updating block.
       #endif
     }
-    
+
     // Initialize new segment
     segment_t *prep_segment = &segment_buffer[segment_buffer_head];
 
@@ -1135,7 +1185,7 @@ void st_prep_buffer()
       if (st_prep_block->is_pwm_rate_adjusted || (sys.step_control & STEP_CONTROL_UPDATE_SPINDLE_PWM)) {
         if (pl_block->condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)) {
           float rpm = pl_block->spindle_speed;
-          // NOTE: Feed and rapid overrides are independent of PWM value and do not alter laser power/rate.        
+          // NOTE: Feed and rapid overrides are independent of PWM value and do not alter laser power/rate.
           if (st_prep_block->is_pwm_rate_adjusted) { rpm *= (prep.current_speed * prep.inv_rate); }
           // If current_speed is zero, then may need to be rpm_min*(100/MAX_SPINDLE_SPEED_OVERRIDE)
           // but this would be instantaneous only and during a motion. May not matter at all.
@@ -1150,7 +1200,7 @@ void st_prep_buffer()
       prep_segment->spindle_pwm = prep.current_spindle_pwm; // Reload segment PWM value
 
     #endif
-    
+
     /* -----------------------------------------------------------------------------------
        Compute segment step rate, steps to execute, and apply necessary rate corrections.
        NOTE: Steps are computed by direct scalar conversion of the millimeter distance
