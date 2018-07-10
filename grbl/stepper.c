@@ -47,6 +47,12 @@ const PORTPINDEF step_pin_mask[N_AXIS] =
 	1 << X_STEP_BIT,
 	1 << Y_STEP_BIT,
 	1 << Z_STEP_BIT,
+  #if N_AXIS > 3
+  1 << A_STEP_BIT,
+  #endif
+  #if N_AXIS > 4
+  1 << B_STEP_BIT,
+  #endif
 
 };
 const PORTPINDEF direction_pin_mask[N_AXIS] =
@@ -54,12 +60,25 @@ const PORTPINDEF direction_pin_mask[N_AXIS] =
 	1 << X_DIRECTION_BIT,
 	1 << Y_DIRECTION_BIT,
 	1 << Z_DIRECTION_BIT,
+  #if N_AXIS > 3
+  1 << A_DIRECTION_BIT,
+  #endif
+  #if N_AXIS > 4
+  1 << B_DIRECTION_BIT,
+  #endif
+
 };
 const PORTPINDEF limit_pin_mask[N_AXIS] =
 {
 	1 << X_LIMIT_BIT,
 	1 << Y_LIMIT_BIT,
 	1 << Z_LIMIT_BIT,
+  #if N_AXIS > 3
+  1 << A_LIMIT_BIT,
+  #endif
+  #if N_AXIS > 4
+  1 << B_LIMIT_BIT,
+  #endif
 };
 
 // Define Adaptive Multi-Axis Step-Smoothing(AMASS) levels and cutoff frequencies. The highest level
