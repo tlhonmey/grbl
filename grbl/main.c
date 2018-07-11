@@ -20,6 +20,9 @@
 */
 
 #include "grbl.h"
+#include <stdio.h>
+#include <stdlib.h>
+
 // Declare system global variable structure
 system_t sys;
 int32_t sys_position[N_AXIS];      // Real-time machine (aka home) position vector in steps.
@@ -34,6 +37,7 @@ volatile uint8_t sys_rt_exec_debug;
 #endif
 
 #if defined (STM32F103C8)
+extern void  initialise_monitor_handles(void);
 #include "usb_lib.h"
 #ifdef USEUSB
 #include "usb_desc.h"
@@ -51,25 +55,25 @@ void USART1_Configuration(u32 BaudRate)
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
-	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;   
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;  
+	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 
-	NVIC_Init(&NVIC_InitStructure);                 
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;	
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;		
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-	USART_InitStructure.USART_BaudRate = BaudRate;	  
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b; 
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;	 
-	USART_InitStructure.USART_Parity = USART_Parity_No;	 
+	USART_InitStructure.USART_BaudRate = BaudRate;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART1->CR1 |= (USART_CR1_RE | USART_CR1_TE);
@@ -90,6 +94,11 @@ int main(void)
 #endif
 {
 #if defined (STM32F103C8)
+
+#if defined(ENABLE_SEMIHOSTING) && (ENABLE_SEMIHOSTING)
+    initialise_monitor_handles();
+    printf("Semihosting enabled\n");
+#endif
     GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE);
 #ifdef LEDBLINK
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -136,7 +145,7 @@ int main(void)
   #else
     sys.state = STATE_IDLE;
   #endif
-  
+
   // Check for power-up and set system alarm if homing is enabled to force homing cycle
   // by setting Grbl's alarm state. Alarm locks out all g-code commands, including the
   // startup scripts, but allows access to settings and internal commands. Only a homing

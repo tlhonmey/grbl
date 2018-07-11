@@ -91,16 +91,21 @@ INCLUDE = $(addprefix -I,$(INC))
 CFLAGS = -Wall
 CFLAGS += -Os
 CFLAGS += -g2
-CFLAGS += -mthumb 
+CFLAGS += -mthumb
 CFLAGS += -mcpu=cortex-m3
 
 # linker flags
 LDSCRIPT = STM32F103C8T6.ld
 LDFLAGS = -T$(LDSCRIPT) -Wl,-Map,$(OUT_DIR)/$(OUTPUT).map -Wl,--gc-sections
+LIBS = -lm
 
 # defines
 DEFINES = -DUSE_STDPERIPH_DRIVER -D__ASSEMBLY__ -D_GRBL_ -DSTM32F103C8 -DSTM32F10X_MD -DLEDBLINK -DUSEUSB
 
+ifeq ($(SH),1)
+    LIBS += -lrdimon
+    DEFINES += -DENABLE_SEMIHOSTING=1
+endif
 .S.o:
 	$(X_CC) $(INCLUDE) $(DEFINES) $(CFLAGS) -c $< -o $@
 .c.o:
@@ -109,7 +114,7 @@ DEFINES = -DUSE_STDPERIPH_DRIVER -D__ASSEMBLY__ -D_GRBL_ -DSTM32F103C8 -DSTM32F1
 .PHONY: all flash grbl_src clean
 
 all:  $(OBJ)
-	$(X_CC) $(CFLAGS) $(LDFLAGS) $(OBJ) -lm -o $(OUT_DIR)/$(OUTPUT)
+	$(X_CC) $(CFLAGS) $(LDFLAGS) $(OBJ) $(LIBS) -o $(OUT_DIR)/$(OUTPUT)
 	mv $(OUT_DIR)/$(OUTPUT) $(OUT_DIR)/$(OUTPUT).elf
 	$(X_OBJCOPY) -O binary $(OUT_DIR)/$(OUTPUT).elf $(OUT_DIR)/$(OUTPUT).bin
 
