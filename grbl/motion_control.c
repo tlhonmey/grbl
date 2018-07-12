@@ -120,14 +120,14 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
 
     float theta_per_segment = angular_travel/segments;
     float linear_per_segment = (target[axis_linear] - position[axis_linear])/segments;
-  #if 0
+  
   #if N_AXIS >3
     float axis_a_per_segment = (target[A_AXIS] - position[A_AXIS])/segments;
   #endif
   #if N_AXIS >4
     float axis_b_per_segment = (target[B_AXIS] - position[B_AXIS])/segments;
   #endif
-  #endif
+  
 
     /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
        and phi is the angle of rotation. Solution approach by Jens Geisler.
@@ -187,14 +187,14 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
       position[axis_0] = center_axis0 + r_axis0;
       position[axis_1] = center_axis1 + r_axis1;
       position[axis_linear] += linear_per_segment;
-    #if 0
+    
     #if N_AXIS > 3
       position[A_AXIS] += axis_a_per_segment;
     #endif
     #if N_AXIS > 4
       position[B_AXIS] += axis_b_per_segment;
     #endif
-    #endif
+  
       mc_line(position, pl_data);
 
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
