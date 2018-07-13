@@ -563,13 +563,13 @@
 #if N_AXIS > 3
   #define DEFAULT_A_STEPS_PER_UNIT 35.555556f // Direct drive : (200 pas par tours * 16 microsteps)/360°
   #define DEFAULT_A_MAX_RATE 8000.0f // °/mn
-  #define DEFAULT_A_ACCELERATION (45.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
+  #define DEFAULT_A_ACCELERATION (100.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
   #define DEFAULT_A_MAX_TRAVEL 360.0 // °
 #endif
 #if N_AXIS > 4
   #define DEFAULT_B_STEPS_PER_UNIT 8.888889f // Direct drive : (200 pas par tours * 16 microsteps)/360°
   #define DEFAULT_B_MAX_RATE 8000.0f // °/mn
-  #define DEFAULT_B_ACCELERATION (45.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
+  #define DEFAULT_B_ACCELERATION (100.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
   #define DEFAULT_B_MAX_TRAVEL 180.0 // °
 #endif
 
