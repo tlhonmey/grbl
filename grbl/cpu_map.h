@@ -374,13 +374,13 @@
 #ifdef VARIABLE_SPINDLE
 
   // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
-#define SPINDLE_PWM_FREQUENCY       10000                   // KHz
+#define SPINDLE_PWM_FREQUENCY       1            // KHz
 #define SPINDLE_PWM_DDR	            GPIOA
 #define SPINDLE_PWM_PORT            GPIOA
 #define RCC_SPINDLE_PWM_PORT        RCC_APB2Periph_GPIOA
 #define SPINDLE_PWM_BIT	            8
 #endif // End of VARIABLE_SPINDLE
-#define SPINDLE_PWM_MAX_VALUE       255
+#define SPINDLE_PWM_MAX_VALUE       1000   
 #ifndef SPINDLE_PWM_MIN_VALUE
 #define SPINDLE_PWM_MIN_VALUE   1   // Must be greater than zero.
 #endif
