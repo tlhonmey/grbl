@@ -41,7 +41,7 @@ uint8_t spindle_get_state();
 // Called by spindle_sync() after sync and parking motion/spindle stop override during restore.
 #ifdef VARIABLE_SPINDLE
 #ifdef STM32F103C8
-#define SPINDLE_PWM_TYPE    uint16_t
+#define SPINDLE_PWM_TYPE    uint32_t
 #else
 #define SPINDLE_PWM_TYPE    uint8_t
 #endif

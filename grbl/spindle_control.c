@@ -107,7 +107,7 @@ void spindle_init()
 
 uint8_t spindle_get_state()
 {
-  uint8_t pin = 0;
+  uint16_t pin = 0;
 	#ifdef VARIABLE_SPINDLE
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
 #ifdef AVRTARGET
