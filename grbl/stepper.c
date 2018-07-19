@@ -122,7 +122,11 @@ LONGLONG nTimer0Out = 0;
 typedef struct {
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
+ #ifdef STM32F103C8
   uint16_t direction_bits;
+ #else
+  unit8_t direction_bits;
+ #endif
   #ifdef VARIABLE_SPINDLE
     uint8_t is_pwm_rate_adjusted; // Tracks motions that require constant laser power/rate
   #endif
@@ -143,7 +147,11 @@ typedef struct {
     uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing.
   #endif
   #ifdef VARIABLE_SPINDLE
+   #ifdef STM32F103C8
     uint32_t spindle_pwm;
+   #else
+    uint8_t spindle_pwm;
+   #endif
   #endif
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
@@ -165,7 +173,12 @@ typedef struct {
   #endif
 
   #ifdef STEP_PULSE_DELAY
+  #ifdef STM32F103C8
+   uint16_t step_bits;
+  #else
     uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
+  #endif
+
   #endif
 
   uint8_t execute_step;     // Flags step execution for each interrupt.
@@ -233,7 +246,11 @@ typedef struct {
 
   #ifdef VARIABLE_SPINDLE
     float inv_rate;    // Used by PWM laser mode to speed up segment calculations.
-    uint32_t current_spindle_pwm;
+    #ifdef STM32F103C8
+      uint32_t current_spindle_pwm;
+    #else
+      uint8_t current_spindle_pwm;
+    #endif
   #endif
 } st_prep_t;
 static st_prep_t prep;
@@ -548,7 +565,7 @@ void Timer1Proc()
       #endif
 
       #ifdef VARIABLE_SPINDLE
-        // Set real-time spindle output as segment is loaded, just prior to the first step. CMMT 
+        // Set real-time spindle output as segment is loaded, just prior to the first step. CMMT
         spindle_set_speed(st.exec_segment->spindle_pwm);
       #endif
 

@@ -107,7 +107,12 @@ void spindle_init()
 
 uint8_t spindle_get_state()
 {
-  uint16_t pin = 0;
+  #if defined (STM32F103C8)
+    uint16_t pin = 0;
+  #else
+    uint8_t pin = 0;
+  #endif
+
 	#ifdef VARIABLE_SPINDLE
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
 #ifdef AVRTARGET
@@ -116,7 +121,7 @@ uint8_t spindle_get_state()
 #if defined (STM32F103C8)
   pin = GPIO_ReadInputData(SPINDLE_ENABLE_PORT);
 #endif
-		  // No spindle direction output pin. 
+		  // No spindle direction output pin.
 			#ifdef INVERT_SPINDLE_ENABLE_PIN
 			  if (bit_isfalse(pin,(1<<SPINDLE_ENABLE_BIT))) { return(SPINDLE_STATE_CW); }
 	    #else
@@ -125,7 +130,7 @@ uint8_t spindle_get_state()
     #else
 #ifdef AVRTARGET
   pin = SPINDLE_DIRECTION_PORT;
-    if (SPINDLE_TCCRA_REGISTER & (1<<SPINDLE_COMB_BIT)) 
+    if (SPINDLE_TCCRA_REGISTER & (1<<SPINDLE_COMB_BIT))
 #endif
 #if defined (STM32F103C8)
       pin = GPIO_ReadInputData(SPINDLE_DIRECTION_PORT);
@@ -324,12 +329,12 @@ void spindle_stop()
 {
   if (sys.abort) { return; } // Block during abort.
   if (state == SPINDLE_DISABLE) { // Halt or set spindle direction and rpm.
-  
+
     #ifdef VARIABLE_SPINDLE
       sys.spindle_speed = 0.0f;
     #endif
     spindle_stop();
-  
+
   } else {
     #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
       if (state == SPINDLE_ENABLE_CW) {
@@ -339,7 +344,7 @@ void spindle_stop()
       SetSpindleDirectionBit();
       }
     #endif
-  
+
     #ifdef VARIABLE_SPINDLE
       // NOTE: Assumes all calls to this function is when Grbl is not moving or must remain off.
       if (settings.flags & BITFLAG_LASER_MODE) {
@@ -355,15 +360,15 @@ void spindle_stop()
         ResetSpindleEnablebit();
       #else
         SetSpindleEnablebit();
-      #endif    
+      #endif
     #endif
   }
-  
+
   sys.report_ovr_counter = 0; // Set to report change immediately
 }
 
 
-// G-code parser entry-point for setting spindle state. Forces a planner buffer sync and bails 
+// G-code parser entry-point for setting spindle state. Forces a planner buffer sync and bails
 // if an abort or check-mode is active.
 #ifdef VARIABLE_SPINDLE
   void spindle_sync(uint8_t state, float rpm)
