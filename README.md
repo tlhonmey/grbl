@@ -1,4 +1,34 @@
-this is my fork of usbcnc for STM32F103 specially for board in my chinnese machine BL-USBMach V2.0
+this is my fork of usbcnc for STM32F103 
+New version is for my solution driver board + stm32f103 board 
+![stm32f103 board](https://github.com/mirecta/grbl/blob/edge/doc/media/103board.jpg?raw=true)
+![driver board] (https://github.com/mirecta/grbl/blob/edge/doc/media/driver.jpg?raw=true)
+
+![final] (https://github.com/mirecta/grbl/blob/edge/doc/media/final.jpg?raw=true)
+
+PIN|PIN driver | PIN STM32F103
+---|-----------|-------------
+1|EN|PE13
+2|STEPX|PE0
+3|DIRX|PE3
+4|STEPY|PE2
+5|DIRY|PE5
+6|STEPZ|PE4
+7|DIRZ|PE7
+8|STEPA|PE6
+9|DIRA|PE9
+10|LIMIT1|PD1
+11|LIMIT2|PD3
+12|LIMIT3|PD5
+13|LIMIT4|PD7
+14|RELAY|?
+15|BLANK|x
+16|STEPB|PE1
+17|DIRB|PE11
+18-25|GND|GND
+-|PWM|PA8
+
+![pwm to 0-10V](https://github.com/mirecta/grbl/blob/edge/doc/media/pwm.jpg?raw=true)
+ for board in my chinnese machine BL-USBMach V2.0  u may use release ver 1.0
 
 ![Board](https://github.com/mirecta/grbl/blob/edge/doc/media/usbmach_pins.jpg?raw=true)
 
