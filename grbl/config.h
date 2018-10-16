@@ -35,7 +35,8 @@
 // one configuration file by placing their specific defaults and pin map at the bottom of this file.
 // If doing so, simply comment out these two defines and see instructions below.
 //#define DEFAULTS_GENERIC
-#define DEFAULT_CNC3060
+//#define DEFAULT_CNC3060
+#define DEFAULT_CNC4060M
 #ifdef WIN32
 #define CPU_MAP_WIN32
 #endif
@@ -382,7 +383,7 @@
 // NOTE: BEWARE! The Arduino bootloader toggles the D13 pin when it powers up. If you flash Grbl with
 // a programmer (you can use a spare Arduino as "Arduino as ISP". Search the web on how to wire this.),
 // this D13 LED toggling should go away. We haven't tested this though. Please report how it goes!
-// #define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
+//#define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
 
 // Alters the behavior of the spindle enable pin with the USE_SPINDLE_DIR_AS_ENABLE_PIN option . By default,
 // Grbl will not disable the enable pin if spindle speed is zero and M3/4 is active, but still sets the PWM
@@ -484,7 +485,7 @@
 // 115200 baud will take 5 msec to transmit a typical 55 character report. Worst case reports are
 // around 90-100 characters. As long as the serial TX buffer doesn't get continually maxed, Grbl
 // will continue operating efficiently. Size the TX buffer around the size of a worst-case report.
-#if !defined (STM32F103C8)
+#if !defined (STM32F103VB)
 // #define RX_BUFFER_SIZE 128 // (1-254) Uncomment to override defaults in serial.h
 // #define TX_BUFFER_SIZE 100 // (1-254)
 #endif

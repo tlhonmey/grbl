@@ -574,4 +574,56 @@
 #endif
 
 #endif
+
+#ifdef DEFAULT_CNC4060M
+#define DEFAULT_X_STEPS_PER_UNIT 640.0f
+#define DEFAULT_Y_STEPS_PER_UNIT 640.0f
+#define DEFAULT_Z_STEPS_PER_UNIT 640.0f
+#define DEFAULT_X_MAX_RATE 900.0f // mm/min
+#define DEFAULT_Y_MAX_RATE 900.0f // mm/min
+#define DEFAULT_Z_MAX_RATE 900.0f // mm/min
+#define DEFAULT_X_ACCELERATION (45.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Y_ACCELERATION (45.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_Z_ACCELERATION (45.0f*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+#define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Y_MAX_TRAVEL 600.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_Z_MAX_TRAVEL 70.0f // mm NOTE: Must be a positive value.
+#define DEFAULT_SPINDLE_RPM_MAX 9000.0f // rpm
+#define DEFAULT_SPINDLE_RPM_MIN 0.0f // rpm
+#define DEFAULT_STEP_PULSE_MICROSECONDS 10
+#define DEFAULT_STEPPING_INVERT_MASK 0x00
+#define DEFAULT_DIRECTION_INVERT_MASK 0x01
+#define DEFAULT_STEPPER_IDLE_LOCK_TIME 0 // msec (0-254, 255 keeps steppers enabled)
+#define DEFAULT_STATUS_REPORT_MASK 1 // MPos enabled
+#define DEFAULT_JUNCTION_DEVIATION 0.01f // mm
+#define DEFAULT_ARC_TOLERANCE 0.002f // mm
+#define DEFAULT_REPORT_INCHES 0 // false
+#define DEFAULT_INVERT_ST_ENABLE 1 // false
+#define DEFAULT_INVERT_LIMIT_PINS 0 // false
+#define DEFAULT_SOFT_LIMIT_ENABLE 0 // false
+#define DEFAULT_HARD_LIMIT_ENABLE 0  // false
+#define DEFAULT_INVERT_PROBE_PIN 0 // false
+#define DEFAULT_LASER_MODE 0 // false
+#define DEFAULT_HOMING_ENABLE 0  // false
+#define DEFAULT_HOMING_DIR_MASK 3 // move positive dir
+#define DEFAULT_HOMING_FEED_RATE 25.0f // mm/min
+#define DEFAULT_HOMING_SEEK_RATE 500.0f // mm/min
+#define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
+#define DEFAULT_HOMING_PULLOFF 1.5f // mm
+#if N_AXIS > 3
+  #define DEFAULT_A_STEPS_PER_UNIT 35.555556f // Direct drive : (200 pas par tours * 16 microsteps)/360°
+  #define DEFAULT_A_MAX_RATE 8000.0f // °/mn
+  #define DEFAULT_A_ACCELERATION (100.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
+  #define DEFAULT_A_MAX_TRAVEL 360.0 // °
+#endif
+#if N_AXIS > 4
+  #define DEFAULT_B_STEPS_PER_UNIT 8.888889f // Direct drive : (200 pas par tours * 16 microsteps)/360°
+  #define DEFAULT_B_MAX_RATE 8000.0f // °/mn
+  #define DEFAULT_B_ACCELERATION (100.0*60*60) // 100*60*60 mm/min^2 = 100 mm/sec^2
+  #define DEFAULT_B_MAX_TRAVEL 180.0 // °
+#endif
+
+#endif
+
+
 #endif

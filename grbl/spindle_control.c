@@ -63,7 +63,7 @@ void spindle_init()
 #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
   GPIO_InitStructure.GPIO_Pin = 1 << SPINDLE_ENABLE_BIT;
 #else
-  GPIO_InitStructure.GPIO_Pin = 1 << SPINDLE_DIRECTION_BIT;
+  GPIO_InitStructure.GPIO_Pin = 1 << SPINDLE_DIRECTION_BIT_CC | 1<< SPINDLE_DIRECTION_BIT_CCW;
 #endif
   GPIO_Init(SPINDLE_ENABLE_PORT, &GPIO_InitStructure);
 
@@ -136,7 +136,7 @@ uint8_t spindle_get_state()
       pin = GPIO_ReadInputData(SPINDLE_DIRECTION_PORT);
 #endif
      {
-        if (pin & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
+        if (pin & (1<<SPINDLE_DIRECTION_BIT_CC)) { return(SPINDLE_STATE_CCW); }
         else { return(SPINDLE_STATE_CW); }
       }
     #endif

@@ -286,28 +286,28 @@
 #ifdef CPU_MAP_STM32F103
 
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
-#define STEP_PORT       GPIOB
-#define RCC_STEP_PORT   RCC_APB2Periph_GPIOB
-#define X_STEP_BIT      7
-#define Y_STEP_BIT      5
-#define Z_STEP_BIT      1
-#define A_STEP_BIT      11
-#define B_STEP_BIT      14
+#define STEP_PORT       GPIOE
+#define RCC_STEP_PORT   RCC_APB2Periph_GPIOE
+#define X_STEP_BIT      0
+#define Y_STEP_BIT      2
+#define Z_STEP_BIT      4
+#define A_STEP_BIT      6
+#define B_STEP_BIT      1
 #define STEP_MASK       ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)|(1<<A_STEP_BIT)|(1<<B_STEP_BIT)) // All step bits
 
   // Define step direction output pins. NOTE: All direction pins must be on the same port.
-#define DIRECTION_PORT      GPIOB
-#define RCC_DIRECTION_PORT   RCC_APB2Periph_GPIOB
-#define X_DIRECTION_BIT   6
-#define Y_DIRECTION_BIT   0
-#define Z_DIRECTION_BIT   10
-#define A_DIRECTION_BIT   12
-#define B_DIRECTION_BIT   15
+#define DIRECTION_PORT      GPIOE
+#define RCC_DIRECTION_PORT   RCC_APB2Periph_GPIOE
+#define X_DIRECTION_BIT   3
+#define Y_DIRECTION_BIT   5
+#define Z_DIRECTION_BIT   7
+#define A_DIRECTION_BIT   9
+#define B_DIRECTION_BIT   11
 #define DIRECTION_MASK    ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)|(1<<A_DIRECTION_BIT)|(1<<B_DIRECTION_BIT)) // All direction bits
 
   // Define stepper driver enable/disable output pin.
-#define STEPPERS_DISABLE_PORT   GPIOB
-#define RCC_STEPPERS_DISABLE_PORT RCC_APB2Periph_GPIOB
+#define STEPPERS_DISABLE_PORT   GPIOE
+#define RCC_STEPPERS_DISABLE_PORT RCC_APB2Periph_GPIOE
 #define STEPPERS_DISABLE_BIT    13
 #define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
 #define ResetStepperDisableBit() GPIO_SetBits(STEPPERS_DISABLE_PORT,STEPPERS_DISABLE_MASK)
@@ -316,31 +316,32 @@
 
   // Define homing/hard limit switch input pins and limit interrupt vectors.
   // NOTE: All limit bit pins must be on the same port
-#define LIMIT_PIN        GPIOA
-#define LIMIT_PORT       GPIOA
-#define RCC_LIMIT_PORT   RCC_APB2Periph_GPIOA
-#define GPIO_LIMIT_PORT  GPIO_PortSourceGPIOA
-#define X_LIMIT_BIT      2
+#define LIMIT_PIN        GPIOD
+#define LIMIT_PORT       GPIOD
+#define RCC_LIMIT_PORT   RCC_APB2Periph_GPIOD
+#define GPIO_LIMIT_PORT  GPIO_PortSourceGPIOD
+#define X_LIMIT_BIT      1
 #define Y_LIMIT_BIT      3
-#define Z_LIMIT_BIT      4
-#define A_LIMIT_BIT      4 //sorry no more pins
+#define Z_LIMIT_BIT      5
+#define A_LIMIT_BIT      7 //sorry no more pins
 #define B_LIMIT_BIT      4 //sorry no more pins
 
 #define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)  ) // All limit bits
 
   // Define spindle enable and spindle direction output pins.
-#define SPINDLE_ENABLE_PORT   GPIOA
-#define RCC_SPINDLE_ENABLE_PORT RCC_APB2Periph_GPIOA
-#define SPINDLE_ENABLE_BIT    9  //
+#define SPINDLE_ENABLE_PORT   GPIOB
+#define RCC_SPINDLE_ENABLE_PORT RCC_APB2Periph_GPIOB
+#define SPINDLE_ENABLE_BIT    1  //
 #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
-#define SPINDLE_DIRECTION_DDR   GPIOA
-#define SPINDLE_DIRECTION_PORT  GPIOA
-#define SPINDLE_DIRECTION_BIT   15  //
+#define SPINDLE_DIRECTION_DDR   GPIOB
+#define SPINDLE_DIRECTION_PORT  GPIOB
+#define SPINDLE_DIRECTION_BIT_CC   13  //
+#define SPINDLE_DIRECTION_BIT_CCW  15
 #endif
 #define SetSpindleEnablebit()       GPIO_WriteBit(SPINDLE_ENABLE_PORT, 1 << SPINDLE_ENABLE_BIT, Bit_SET)
 #define ResetSpindleEnablebit()     GPIO_WriteBit(SPINDLE_ENABLE_PORT, 1 << SPINDLE_ENABLE_BIT, Bit_RESET)
-#define SetSpindleDirectionBit()    GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT,Bit_SET)
-#define ResetSpindleDirectionBit()  GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT,Bit_RESET)
+#define SetSpindleDirectionBit()    GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CC,Bit_SET); GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CCW,Bit_RESET)
+#define ResetSpindleDirectionBit()  GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CC,Bit_RESET);GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CCW,Bit_SET)
 
 
   // Define flood and mist coolant enable output pins.
@@ -361,13 +362,13 @@
 #define CONTROL_RESET_BIT             12
 #define CONTROL_FEED_HOLD_BIT         13
 #define CONTROL_CYCLE_START_BIT       14
-#define CONTROL_SAFETY_DOOR_BIT       1
+#define CONTROL_SAFETY_DOOR_BIT       15
 #define CONTROL_MASK                 ((1<<CONTROL_RESET_BIT)|(1<<CONTROL_FEED_HOLD_BIT)|(1<<CONTROL_CYCLE_START_BIT)|(1<<CONTROL_SAFETY_DOOR_BIT))
 
   // Define probe switch input pin.
 #define PROBE_PORT                    GPIOA
 #define RCC_PROBE_PORT                RCC_APB2Periph_GPIOA
-#define PROBE_BIT                     0
+#define PROBE_BIT                     10
 #define PROBE_MASK                    (1<<PROBE_BIT)
 
   // Start of PWM & Stepper Enabled Spindle
