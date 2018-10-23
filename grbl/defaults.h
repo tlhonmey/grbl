@@ -588,7 +588,7 @@
 #define DEFAULT_X_MAX_TRAVEL 400.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Y_MAX_TRAVEL 600.0f // mm NOTE: Must be a positive value.
 #define DEFAULT_Z_MAX_TRAVEL 70.0f // mm NOTE: Must be a positive value.
-#define DEFAULT_SPINDLE_RPM_MAX 9000.0f // rpm
+#define DEFAULT_SPINDLE_RPM_MAX 24000.0f // rpm
 #define DEFAULT_SPINDLE_RPM_MIN 0.0f // rpm
 #define DEFAULT_STEP_PULSE_MICROSECONDS 10
 #define DEFAULT_STEPPING_INVERT_MASK 0x00

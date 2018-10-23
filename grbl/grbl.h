@@ -119,7 +119,7 @@ typedef int bool;
   #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with VARIABLE_SPINDLE enabled"
 #endif
 
-#if defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && !defined(CPU_MAP_ATMEGA328P)
+#if defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && (!defined(CPU_MAP_ATMEGA328P) && !defined(CPU_MAP_STM32F103))
   #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with a 328p processor"
 #endif
 

@@ -63,7 +63,7 @@ void spindle_init()
 #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
   GPIO_InitStructure.GPIO_Pin = 1 << SPINDLE_ENABLE_BIT;
 #else
-  GPIO_InitStructure.GPIO_Pin = 1 << SPINDLE_DIRECTION_BIT_CC | 1<< SPINDLE_DIRECTION_BIT_CCW;
+  GPIO_InitStructure.GPIO_Pin = 1 << SPINDLE_DIRECTION_BIT;
 #endif
   GPIO_Init(SPINDLE_ENABLE_PORT, &GPIO_InitStructure);
 
@@ -74,9 +74,9 @@ void spindle_init()
   TIM_OCInitTypeDef outputChannelInit = { 0 };
   TIM_TimeBaseStructInit(&timerInitStructure);
 
-  timerInitStructure.TIM_Prescaler = F_CPU / 1000000 - 1; // 1000
+  timerInitStructure.TIM_Prescaler = F_CPU/ 1000000 ; // 1Mhz
   timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-  timerInitStructure.TIM_Period = SPINDLE_PWM_MAX_VALUE -1;
+  timerInitStructure.TIM_Period = SPINDLE_PWM_MAX_VALUE;
   timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
   timerInitStructure.TIM_RepetitionCounter = 0;
   TIM_TimeBaseInit(TIM1, &timerInitStructure);
@@ -136,7 +136,7 @@ uint8_t spindle_get_state()
       pin = GPIO_ReadInputData(SPINDLE_DIRECTION_PORT);
 #endif
      {
-        if (pin & (1<<SPINDLE_DIRECTION_BIT_CC)) { return(SPINDLE_STATE_CCW); }
+        if (pin & (1<<SPINDLE_DIRECTION_BIT)) { return(SPINDLE_STATE_CCW); }
         else { return(SPINDLE_STATE_CW); }
       }
     #endif

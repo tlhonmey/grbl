@@ -335,13 +335,12 @@
 #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
 #define SPINDLE_DIRECTION_DDR   GPIOB
 #define SPINDLE_DIRECTION_PORT  GPIOB
-#define SPINDLE_DIRECTION_BIT_CC   13  //
-#define SPINDLE_DIRECTION_BIT_CCW  15
+#define SPINDLE_DIRECTION_BIT   13  //
 #endif
 #define SetSpindleEnablebit()       GPIO_WriteBit(SPINDLE_ENABLE_PORT, 1 << SPINDLE_ENABLE_BIT, Bit_SET)
 #define ResetSpindleEnablebit()     GPIO_WriteBit(SPINDLE_ENABLE_PORT, 1 << SPINDLE_ENABLE_BIT, Bit_RESET)
-#define SetSpindleDirectionBit()    GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CC,Bit_SET); GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CCW,Bit_RESET)
-#define ResetSpindleDirectionBit()  GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CC,Bit_RESET);GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT_CCW,Bit_SET)
+#define SetSpindleDirectionBit()    GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT,Bit_SET)
+#define ResetSpindleDirectionBit()  GPIO_WriteBit(SPINDLE_DIRECTION_PORT, 1 << SPINDLE_DIRECTION_BIT,Bit_RESET)
 
 
   // Define flood and mist coolant enable output pins.
@@ -368,20 +367,20 @@
   // Define probe switch input pin.
 #define PROBE_PORT                    GPIOA
 #define RCC_PROBE_PORT                RCC_APB2Periph_GPIOA
-#define PROBE_BIT                     10
+#define PROBE_BIT                     14
 #define PROBE_MASK                    (1<<PROBE_BIT)
 
   // Start of PWM & Stepper Enabled Spindle
 #ifdef VARIABLE_SPINDLE
 
   // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
-#define SPINDLE_PWM_FREQUENCY       1            // KHz
+#define SPINDLE_PWM_FREQUENCY       1000       // KHz
 #define SPINDLE_PWM_DDR	            GPIOA
 #define SPINDLE_PWM_PORT            GPIOA
 #define RCC_SPINDLE_PWM_PORT        RCC_APB2Periph_GPIOA
 #define SPINDLE_PWM_BIT	            8
 #endif // End of VARIABLE_SPINDLE
-#define SPINDLE_PWM_MAX_VALUE       1000   
+#define SPINDLE_PWM_MAX_VALUE       6000
 #ifndef SPINDLE_PWM_MIN_VALUE
 #define SPINDLE_PWM_MIN_VALUE   1   // Must be greater than zero.
 #endif
