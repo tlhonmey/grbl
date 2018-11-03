@@ -359,7 +359,7 @@
 #define RCC_CONTROL_PORT              RCC_APB2Periph_GPIOA
 #define GPIO_CONTROL_PORT             GPIO_PortSourceGPIOA
 #define CONTROL_RESET_BIT             12
-#define CONTROL_FEED_HOLD_BIT         13
+#define CONTROL_FEED_HOLD_BIT         9
 #define CONTROL_CYCLE_START_BIT       14
 #define CONTROL_SAFETY_DOOR_BIT       15
 #define CONTROL_MASK                 ((1<<CONTROL_RESET_BIT)|(1<<CONTROL_FEED_HOLD_BIT)|(1<<CONTROL_CYCLE_START_BIT)|(1<<CONTROL_SAFETY_DOOR_BIT))
@@ -367,7 +367,7 @@
   // Define probe switch input pin.
 #define PROBE_PORT                    GPIOA
 #define RCC_PROBE_PORT                RCC_APB2Periph_GPIOA
-#define PROBE_BIT                     14
+#define PROBE_BIT                     10
 #define PROBE_MASK                    (1<<PROBE_BIT)
 
   // Start of PWM & Stepper Enabled Spindle
