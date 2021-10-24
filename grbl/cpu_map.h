@@ -285,20 +285,30 @@
 
 #ifdef CPU_MAP_STM32F103
 
-  // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
+  // Define step pulse output pins. NOTE: All step bit pins must be on the same port...  Or must they?
+  // Attempt to split potential pins onto two ports without mucking about with the rest of the code for STM32...  
+  // This could be tricky...
+#define H_PORT_OFFSET   16
+#define L_PORT_MASK     0xFFFF  //Sorry, too tired to bother with deriving one from the other.  You get what you pay for.
 #define STEP_PORT       GPIOB
 #define RCC_STEP_PORT   RCC_APB2Periph_GPIOB
-#define X_STEP_BIT      7
-#define Y_STEP_BIT      5
+#define H_STEP_PORT     GPIOA                //We're going to stack the pins on the A controller to the 
+#define H_RCC_STEP_PORT RCC_APB2Periph_GPIOA //left of the pins on the B controller
+#define X_STEP_BIT      ( 5 + H_PORT_OFFSET )
+#define Y_STEP_BIT      ( 7 + H_PORT_OFFSET )
 #define Z_STEP_BIT      1
 #define A_STEP_BIT      11
 #define B_STEP_BIT      14
 #define STEP_MASK       ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)|(1<<A_STEP_BIT)|(1<<B_STEP_BIT)) // All step bits
 
-  // Define step direction output pins. NOTE: All direction pins must be on the same port.
-#define DIRECTION_PORT      GPIOB
+  // Define direction pulse output pins. NOTE: All direction bit pins must be on the same port...  Or must they?
+  // Attempt to split potential pins onto two ports without mucking about with the rest of the code for STM32...  
+  // This could be tricky...
+#define DIRECTION_PORT       GPIOB
 #define RCC_DIRECTION_PORT   RCC_APB2Periph_GPIOB
-#define X_DIRECTION_BIT   6
+#define H_DIRECTION_PORT     GPIOA
+#define H_RCC_DIRECTION_PORT RCC_APB2Periph_GPIOA
+#define X_DIRECTION_BIT   ( 6 + H_PORT_OFFSET )
 #define Y_DIRECTION_BIT   0
 #define Z_DIRECTION_BIT   10
 #define A_DIRECTION_BIT   12

@@ -123,7 +123,7 @@ typedef struct {
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
  #ifdef STM32F103C8
-  uint16_t direction_bits;
+  uint32_t direction_bits;
  #else
   unit8_t direction_bits;
  #endif
@@ -174,7 +174,7 @@ typedef struct {
 
   #ifdef STEP_PULSE_DELAY
   #ifdef STM32F103C8
-   uint16_t step_bits;
+   uint32_t step_bits;
   #else
     uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
   #endif
@@ -465,7 +465,8 @@ void Timer1Proc()
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
 #endif
 #ifdef STM32F103C8
-  GPIO_Write(DIRECTION_PORT, (GPIO_ReadOutputData(DIRECTION_PORT) & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK));
+  GPIO_Write(DIRECTION_PORT,   (GPIO_ReadOutputData(DIRECTION_PORT)   & ~(DIRECTION_MASK & L_PORT_MASK) ) | ((st.dir_outbits & DIRECTION_MASK) & L_PORT_MASK) );
+  GPIO_Write(H_DIRECTION_PORT, (GPIO_ReadOutputData(H_DIRECTION_PORT) & ~(DIRECTION_MASK >> H_PORT_OFFSET) ) | ((st.dir_outbits & DIRECTION_MASK) >> H_PORT_OFFSET ));
   TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
 #endif
 
@@ -477,7 +478,8 @@ void Timer1Proc()
     STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
 #endif
 #ifdef STM32F103C8
-	GPIO_Write(STEP_PORT, (GPIO_ReadOutputData(STEP_PORT) & ~STEP_MASK) | st.step_outbits);
+	GPIO_Write(STEP_PORT, (GPIO_ReadOutputData(STEP_PORT) & ~(STEP_MASK & L_PORT_MASK) ) | (st.step_outbits) & L_PORT_MASK );
+	GPIO_Write(H_STEP_PORT, (GPIO_ReadOutputData(H_STEP_PORT) & ~(STEP_MASK >> H_PORT_OFFSET) ) | (st.step_outbits >> H_PORT_OFFSET) );
 #endif
   #endif
 
@@ -702,7 +704,8 @@ void Timer0Proc()
 		TIM3->SR &= ~(1<<0);                          // clear UIF flag
 		TIM3->CNT = 0;
 		NVIC_DisableIRQ(TIM3_IRQn);
-		GPIO_Write(STEP_PORT, (GPIO_ReadOutputData(STEP_PORT) & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK));
+		GPIO_Write(STEP_PORT, (GPIO_ReadOutputData(STEP_PORT)     & ~(STEP_MASK & L_PORT_MASK) ) | ((step_port_invert_mask & STEP_MASK) & L_PORT_MASK));
+		GPIO_Write(H_STEP_PORT, (GPIO_ReadOutputData(H_STEP_PORT) & ~(STEP_MASK >> H_PORT_OFFSET) ) | ((step_port_invert_mask & STEP_MASK) >> H_PORT_OFFSET));
 	}
 #endif
 #ifdef AVRTARGET
@@ -765,8 +768,11 @@ void st_reset()
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
 #endif
 #ifdef STM32F103C8
-  GPIO_Write(STEP_PORT, (GPIO_ReadOutputData(STEP_PORT) & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK));
-  GPIO_Write(DIRECTION_PORT, (GPIO_ReadOutputData(DIRECTION_PORT) & ~DIRECTION_MASK) | (dir_port_invert_mask & DIRECTION_MASK));
+  GPIO_Write(STEP_PORT,   (GPIO_ReadOutputData(STEP_PORT) & ~(STEP_MASK & L_PORT_MASK) ) | ((step_port_invert_mask & STEP_MASK) & L_PORT_MASK));
+  GPIO_Write(H_STEP_PORT, (GPIO_ReadOutputData(H_STEP_PORT) & ~(STEP_MASK >> H_PORT_OFFSET) ) | ((step_port_invert_mask & STEP_MASK) >> H_PORT_OFFSET));
+
+  GPIO_Write(DIRECTION_PORT,   (GPIO_ReadOutputData(DIRECTION_PORT)   & ~(DIRECTION_MASK & L_PORT_MASK) ) | ((dir_port_invert_mask & DIRECTION_MASK) & L_PORT_MASK));
+  GPIO_Write(H_DIRECTION_PORT, (GPIO_ReadOutputData(H_DIRECTION_PORT) & ~(DIRECTION_MASK >> H_PORT_OFFSET) ) | ((dir_port_invert_mask & DIRECTION_MASK) >> H_PORT_OFFSET));
 #endif
 }
 
@@ -813,7 +819,7 @@ void Timer0Thread(void *pVoid)
 void stepper_init()
 {
   // Configure step and direction interface pins
-#ifdef STM32F103C8
+#ifdef STM32F103C8 
 	GPIO_InitTypeDef GPIO_InitStructure;
 	RCC_APB2PeriphClockCmd(RCC_STEPPERS_DISABLE_PORT, ENABLE);
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -822,12 +828,18 @@ void stepper_init()
 	GPIO_Init(STEPPERS_DISABLE_PORT, &GPIO_InitStructure);
 
 	RCC_APB2PeriphClockCmd(RCC_STEP_PORT, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = STEP_MASK;
+	RCC_APB2PeriphClockCmd(H_RCC_STEP_PORT, ENABLE);
+	GPIO_InitStructure.GPIO_Pin = STEP_MASK & L_PORT_MASK;
 	GPIO_Init(STEP_PORT, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = STEP_MASK >> H_PORT_OFFSET;
+	GPIO_Init(H_STEP_PORT, &GPIO_InitStructure);
 
 	RCC_APB2PeriphClockCmd(RCC_DIRECTION_PORT, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = DIRECTION_MASK;
+	RCC_APB2PeriphClockCmd(H_RCC_DIRECTION_PORT, ENABLE);
+	GPIO_InitStructure.GPIO_Pin = DIRECTION_MASK & L_PORT_MASK;
 	GPIO_Init(DIRECTION_PORT, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = DIRECTION_MASK >> H_PORT_OFFSET;
+	GPIO_Init(H_DIRECTION_PORT, &GPIO_InitStructure);
 
 	RCC->APB1ENR |= RCC_APB1Periph_TIM2;
 	TIM_Configuration(TIM2, 1, 1, 1);

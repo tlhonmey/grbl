@@ -2,7 +2,9 @@ this is my fork of usbcnc for STM32F103 specially for board in my chinnese machi
 
 ![Board](https://github.com/mirecta/grbl/blob/edge/doc/media/usbmach_pins.jpg?raw=true)
 
-U must remove three capacitors and solder 3 wires, because this would recquire masive sw patches , so better is patch with three wires
+NOTE: On my usbmach v2.0 the SWD pin order, left to right as pictured below, is actually VCC,GND,SWDIO,SWCLK Once I figured that out (with the STM32 chip pinout and a multimeter) it programmed just fine with an ST-LINK V2 and STM32CubeProgrammer 
+
+Ignore the wire patch lines, that is no longer necessary.
 
 ![patch](https://github.com/mirecta/grbl/blob/edge/doc/media/usbmach_patch.jpg?raw=true)
 

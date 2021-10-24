@@ -62,7 +62,7 @@ typedef struct {
   uint32_t step_event_count; // The maximum step axis count and number of steps required to complete this block.
 
   #ifdef STM32F103C8
-    uint16_t direction_bits;    // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
+    uint32_t direction_bits;    // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   #else
     uint8_t direction_bits;    // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   #endif
